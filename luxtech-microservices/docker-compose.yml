@@ -1,0 +1,138 @@
+version: '3.8'
+
+services:
+
+  # ── Infrastructure ─────────────────────────────────────────
+
+  mysql:
+    image: mysql:8.0
+    container_name: luxtech-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_USER: luxtech
+      MYSQL_PASSWORD: password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql
+    networks: [luxtech-network]
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+  rabbitmq:
+    image: rabbitmq:3.12-management
+    container_name: luxtech-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: password
+    ports:
+      - "5672:5672"
+      - "15672:15672"   # Dashboard : http://localhost:15672
+    networks: [luxtech-network]
+
+  # ── Microservices ─────────────────────────────────────────
+
+  eureka-server:
+    build: ./eureka-server
+    container_name: eureka-server
+    ports: ["8761:8761"]
+    networks: [luxtech-network]
+
+  api-gateway:
+    build: ./api-gateway
+    container_name: api-gateway
+    ports: ["8080:8080"]
+    depends_on: [eureka-server]
+    environment:
+      JWT_SECRET: bXlTdXBlclNlY3JldEtleUZvckx1eHRlY2hNaWNyb3NlcnZpY2VzMjAyNA==
+    networks: [luxtech-network]
+
+  auth-service:
+    build: ./auth-service
+    container_name: auth-service
+    ports: ["8081:8081"]
+    depends_on: [eureka-server, mysql]
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/luxtech_auth?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: password
+      JWT_SECRET: bXlTdXBlclNlY3JldEtleUZvckx1eHRlY2hNaWNyb3NlcnZpY2VzMjAyNA==
+    networks: [luxtech-network]
+
+  hotel-service:
+    build: ./hotel-service
+    container_name: hotel-service
+    ports: ["8082:8082"]
+    depends_on: [eureka-server, mysql]
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/luxtech_hotel?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: password
+    networks: [luxtech-network]
+
+  booking-service:
+    build: ./booking-service
+    container_name: booking-service
+    ports: ["8083:8083"]
+    depends_on: [eureka-server, mysql, rabbitmq]
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/luxtech_booking?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_RABBITMQ_HOST: rabbitmq
+    networks: [luxtech-network]
+
+  payment-service:
+    build: ./payment-service
+    container_name: payment-service
+    ports: ["8084:8084"]
+    depends_on: [eureka-server, mysql, rabbitmq]
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/luxtech_payment?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_RABBITMQ_HOST: rabbitmq
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+    networks: [luxtech-network]
+
+  agency-service:
+    build: ./agency-service
+    container_name: agency-service
+    ports: ["8085:8085"]
+    depends_on: [eureka-server, mysql, rabbitmq]
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/luxtech_agency?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_RABBITMQ_HOST: rabbitmq
+    networks: [luxtech-network]
+
+  notification-service:
+    build: ./notification-service
+    container_name: notification-service
+    ports: ["8086:8086"]
+    depends_on: [eureka-server, mysql, rabbitmq]
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/luxtech_notification?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_RABBITMQ_HOST: rabbitmq
+    networks: [luxtech-network]
+
+  public-api-service:
+    build: ./public-api-service
+    container_name: public-api-service
+    ports: ["8087:8087"]
+    depends_on: [eureka-server, mysql]
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/luxtech_public?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: password
+    networks: [luxtech-network]
+
+volumes:
+  mysql-data:
+
+networks:
+  luxtech-network:
+    driver: bridge

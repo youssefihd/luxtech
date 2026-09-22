@@ -1,0 +1,75 @@
+server:
+  port: 8080
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins:
+              - "http://localhost:5173"
+              - "http://localhost:3000"
+            allowedMethods: "*"
+            allowedHeaders: "*"
+            allowCredentials: true
+      routes:
+        - id: auth-service
+          uri: lb://auth-service
+          predicates:
+            - Path=/api/auth/**
+        - id: hebergement-service
+          uri: lb://hebergement-service
+          predicates:
+            - Path=/api/hebergement/**
+          filters:
+            - name: JwtAuthFilter
+        - id: booking-service-public
+          uri: lb://booking-service
+          predicates:
+            - Path=/api/booking/**
+        - id: booking-service-protected
+          uri: lb://booking-service
+          predicates:
+            - Path=/api/reservations/**
+          filters:
+            - name: JwtAuthFilter
+        - id: payment-service
+          uri: lb://payment-service
+          predicates:
+            - Path=/api/payment/**
+          filters:
+            - name: JwtAuthFilter
+        - id: agency-service
+          uri: lb://agency-service
+          predicates:
+            - Path=/api/agence/**
+          filters:
+            - name: JwtAuthFilter
+        - id: notification-service
+          uri: lb://notification-service
+          predicates:
+            - Path=/api/notifications/**
+          filters:
+            - name: JwtAuthFilter
+        - id: public-api-service
+          uri: lb://public-api-service
+          predicates:
+            - Path=/api/search/**, /api/public/**
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true
+jwt:
+  secret: ${JWT_SECRET:bXlTdXBlclNlY3JldEtleUZvckx1eHRlY2hNaWNyb3NlcnZpY2VzMjAyNA==}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG

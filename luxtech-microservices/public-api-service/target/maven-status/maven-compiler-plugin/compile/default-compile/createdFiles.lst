@@ -1,0 +1,12 @@
+com\luxtech\publicapi\controller\PublicApiController.class
+com\luxtech\publicapi\client\BookingClient.class
+com\luxtech\publicapi\dto\PublicDto$ApiResponse$ApiResponseBuilder.class
+com\luxtech\publicapi\PublicApiServiceApplication.class
+com\luxtech\publicapi\dto\PublicDto$BookingRequest.class
+com\luxtech\publicapi\dto\PublicDto$SearchRequest$SearchRequestBuilder.class
+com\luxtech\publicapi\dto\PublicDto.class
+com\luxtech\publicapi\dto\PublicDto$BookingRequest$BookingRequestBuilder.class
+com\luxtech\publicapi\dto\PublicDto$SearchRequest.class
+com\luxtech\publicapi\service\PublicApiService.class
+com\luxtech\publicapi\client\HotelClient.class
+com\luxtech\publicapi\dto\PublicDto$ApiResponse.class

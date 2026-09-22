@@ -1,0 +1,201 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║                    LUXTECH — COMPLETE PROFILE INTEGRATION                ║
+║                           CHECKLIST COMPLÈTE                              ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+## 🚀 ÉTAPE 1 — BACKEND (Java/Spring Boot)
+
+### 1.1 Créer les fichiers Entity
+✅ [ ] hotel-service/src/main/java/com/luxtech/hotel/entity/Photo.java
+       → Copier Photo.java
+
+✅ [ ] hotel-service/src/main/java/com/luxtech/hotel/entity/Document.java
+       → Copier Document_FINAL.java
+
+### 1.2 Mettre à jour Hotel.java
+⚠️  [ ] hotel-service/src/main/java/com/luxtech/hotel/entity/Hotel.java
+       → Ajouter ces imports :
+          import java.util.ArrayList;
+          import java.util.List;
+
+       → Ajouter ces champs :
+          @OneToMany(mappedBy = "hotel", cascade = CascadeType.ALL, orphanRemoval = true)
+          @Builder.Default
+          private List<Photo> photos = new ArrayList<>();
+
+          @OneToMany(mappedBy = "hotel", cascade = CascadeType.ALL, orphanRemoval = true)
+          @Builder.Default
+          private List<Document> documents = new ArrayList<>();
+
+### 1.3 Créer les Repositories
+✅ [ ] hotel-service/src/main/java/com/luxtech/hotel/repository/PhotoRepository.java
+       → Copier PhotoRepository.java
+
+✅ [ ] hotel-service/src/main/java/com/luxtech/hotel/repository/DocumentRepository.java
+       → Copier DocumentRepository.java
+
+### 1.4 Créer le StorageService
+✅ [ ] hotel-service/src/main/java/com/luxtech/hotel/service/StorageService.java
+       → Copier StorageService.java
+
+### 1.5 Mettre à jour HotelService.java
+⚠️  [ ] hotel-service/src/main/java/com/luxtech/hotel/service/HotelService.java
+       → REMPLACER entièrement par HotelService_CORRECTED.java
+       → ⚠️  Attention : vérifie que les imports sont complets
+       → Ajoute les 2 repositories dans les dépendances :
+          private final PhotoRepository photoRepository;
+          private final DocumentRepository documentRepository;
+
+### 1.6 Mettre à jour HotelController.java
+⚠️  [ ] hotel-service/src/main/java/com/luxtech/hotel/controller/HotelController.java
+       → REMPLACER entièrement par HotelController_UPDATED.java
+       → Ajoute l'import : import org.springframework.http.MediaType;
+
+### 1.7 Mettre à jour HotelDto.java
+⚠️  [ ] hotel-service/src/main/java/com/luxtech/hotel/dto/HotelDto.java
+       → REMPLACER entièrement par HotelDto_FINAL.java
+
+### 1.8 Vérifier application.yml
+✅ [ ] hotel-service/src/main/resources/application.yml
+       → Vérifier que la configuration suivante est présente :
+          app:
+            upload:
+              dir: uploads
+              base-url: http://localhost:8082/uploads
+
+       → Port attendu : 8082 ✓
+
+### 1.9 Test Backend
+✅ [ ] Redémarrer hotel-service
+       → Vérifier qu'il démarre sans erreurs
+       → Logs : "hotel-service UP" sur http://localhost:8082/api/hotel/health
+
+---
+
+## 📱 ÉTAPE 2 — FRONTEND (React)
+
+### 2.1 Mettre à jour axios.js
+⚠️  [ ] src/api/axios.js
+       → REMPLACER entièrement par axios_FINAL.js
+       → Vérifier : baseURL: 'http://localhost:8082/api' ✓
+
+### 2.2 Mettre à jour authApi.js
+⚠️  [ ] src/api/authApi.js
+       → REMPLACER entièrement par authApi_FINAL.js
+       → Vérifier que hotelApi.completeProfile() est présent ✓
+
+### 2.3 Remplacer CompleteProfile.jsx
+⚠️  [ ] src/pages/auth/CompleteProfile.jsx
+       → REMPLACER entièrement par CompleteProfile_FINAL.jsx
+       → Vérifier l'import : import { hotelApi } from '../../api/authApi' ✓
+
+### 2.4 Test Frontend
+✅ [ ] Redémarrer le frontend (npm run dev)
+       → Accéder à http://localhost:5173
+       → Naviguer : Register → CompleteProfile
+       → Vérifier que les champs s'affichent correctement
+
+---
+
+## 🧪 ÉTAPE 3 — TESTS COMPLETS
+
+### 3.1 Test du flow complet
+✅ [ ] Créer un compte hôtel via Register.jsx
+       → Remplir les 8 étapes
+       → Cliquer "Créer mon compte"
+       → Être redirigé vers CompleteProfile avec l'URL :
+          /complete-profile?role=HOTEL_ADMIN&prenom=...
+
+✅ [ ] Remplir CompleteProfile.jsx
+       1. Section 1 : Infos de base ✓
+       2. Section 2 : Ajouter au moins 1 chambre ✓
+       3. Section 3 : Ajouter au moins 3 photos ✓
+       4. Section 4 : Ajouter les 4 documents obligatoires + IBAN ✓
+
+✅ [ ] Cliquer "Soumettre mon dossier pour validation"
+       → Vérifier le spinner de chargement
+       → Attendre la réponse du backend (1-2 sec)
+       → Vérifier le message de succès
+       → Être redirigé vers la page de succès
+
+### 3.2 Vérifier les fichiers uploadés
+✅ [ ] Sur le serveur
+       → Aller dans le dossier : hotel-service/uploads/
+       → Vérifier la structure :
+          uploads/
+          ├── photos/
+          │   └── uuid-xxx.jpg (photos uploadées)
+          └── documents/
+              └── uuid-xxx.pdf (documents uploadés)
+
+### 3.3 Vérifier la base de données
+✅ [ ] Accéder à MySQL
+       → Base : luxtech_hotel
+       → Tables :
+          - hotels (vérifier que l'IBAN a été sauvegardé) ✓
+          - chambre_types (vérifier les chambres ajoutées) ✓
+          - chambres (vérifier les chambres physiques) ✓
+          - photos (vérifier les photos) ✓
+          - documents (vérifier les documents) ✓
+
+---
+
+## ✅ VÉRIFICATION FINALE
+
+### Architecture Global
+✅ [ ] Backend : http://localhost:8082/api/hotel/health → "UP"
+✅ [ ] Frontend : http://localhost:5173 → Page d'accueil chargée
+✅ [ ] Auth Service : http://localhost:8081/api/auth/health → "UP"
+✅ [ ] Eureka : http://localhost:8761 → Tous les services visibles
+
+### Tests Frontend
+✅ [ ] CompleteProfile se charge correctement
+✅ [ ] Les sections s'affichent correctement
+✅ [ ] Les validations fonctionnent (min 3 photos, documents obligatoires)
+✅ [ ] L'upload de fichiers marche
+✅ [ ] L'appel API est effectué correctement
+✅ [ ] La page de succès s'affiche après soumission
+
+### Tests Backend
+✅ [ ] L'endpoint POST /api/hotel/complete-profile reçoit les données
+✅ [ ] Les chambres sont créées correctement
+✅ [ ] Les photos sont sauvegardées sur le disque
+✅ [ ] Les documents sont sauvegardés sur le disque
+✅ [ ] L'IBAN est sauvegardé dans la BDD
+✅ [ ] Une réponse JSON success=true est retournée
+
+---
+
+## 🚨 DÉPANNAGE
+
+### Erreur 404 sur /api/hotel/complete-profile
+→ Vérifier que HotelController.java a le nouvel endpoint
+→ Vérifier le port (8082)
+→ Redémarrer hotel-service
+
+### Erreur "Cannot resolve symbol 'hotelApi'"
+→ Vérifier que authApi.js a été remplacé par authApi_FINAL.js
+→ Vérifier l'import dans CompleteProfile.jsx
+
+### Erreur lors de l'upload de fichiers
+→ Vérifier que StorageService.java a été créé
+→ Vérifier que le dossier 'uploads' existe à la racine du projet
+→ Vérifier les permissions du dossier
+
+### Photos/documents ne s'affichent pas
+→ Vérifier que base-url dans application.yml est correct
+→ Vérifier que les fichiers existent dans le dossier uploads/
+
+---
+
+## 📞 CONTACTS & RESSOURCES
+
+- Frontend Port: 5173
+- Hotel Service Port: 8082
+- Auth Service Port: 8081
+- Eureka Port: 8761
+- Database: MySQL localhost:3306
+
+---
+
+✨ **INTÉGRATION COMPLÈTE DU LUXTECH COMPLETE PROFILE** ✨

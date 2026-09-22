@@ -1,0 +1,3 @@
+com\luxtech\gateway\filter\JwtAuthFilter.class
+com\luxtech\gateway\ApiGatewayApplication.class
+com\luxtech\gateway\filter\JwtAuthFilter$Config.class
