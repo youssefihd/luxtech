@@ -1,0 +1,22 @@
+server:
+  port: 7777
+
+# ISO 8583 Processor connection settings
+processor:
+  host: localhost
+  port: 9876
+  connect-timeout: 5000   # 5 seconds
+  read-timeout: 30000     # 30 seconds
+
+# Logging
+logging:
+  level:
+    com.payment: DEBUG
+    com.payment.adapter: INFO
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+
+spring:
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
