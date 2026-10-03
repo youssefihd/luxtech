@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { Save, Handshake } from 'lucide-react'
-import axios from '../../api/axios'
+import { agencyAxios } from '../../api/axios'
 
 export default function AgencyProfile() {
     const { user } = useAuth()
@@ -12,7 +12,7 @@ export default function AgencyProfile() {
 
     useEffect(() => {
         if (user?.agencyId) {
-            axios.get(`/api/agence/agences/${user.agencyId}`)
+            agencyAxios.get(`/agence/${user.agencyId}`)
                 .then(r => setAgence(r.data?.data || r.data))
                 .catch(console.error)
                 .finally(() => setLoading(false))
@@ -25,7 +25,25 @@ export default function AgencyProfile() {
         if (!agence) return
         setSaving(true)
         try {
-            await axios.put(`/api/agence/agences/${agence.id}`, agence)
+            await agencyAxios.put(`/agence/${agence.id}`, {
+                nomAgence: agence.nomAgence,
+                nomCommercial: agence.nomCommercial,
+                raisonSociale: agence.raisonSociale,
+                ice: agence.ice,
+                patente: agence.patente,
+                numeroFiscal: agence.numeroFiscal,
+                licenceVoyage: agence.licenceVoyage,
+                rc: agence.rc,
+                email: agence.email,
+                telephone: agence.telephone,
+                telephone2: agence.telephone2,
+                fax: agence.fax,
+                website: agence.website,
+                ville: agence.ville,
+                pays: agence.pays,
+                codePostal: agence.codePostal,
+                adresse: agence.adresse,
+            })
             setToast({ msg: 'Profil mis à jour avec succès !', type: 'success' })
         } catch {
             setToast({ msg: 'Erreur lors de la sauvegarde.', type: 'error' })
@@ -76,22 +94,28 @@ export default function AgencyProfile() {
             ) : (
                 <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        {field("Nom de l'agence", 'nom')}
+                        {field("Nom de l'agence", 'nomAgence')}
+                        {field('Nom commercial', 'nomCommercial')}
+                        {field('Raison sociale', 'raisonSociale')}
                         {field('Email', 'email', 'email')}
                         {field('Téléphone', 'telephone')}
-                        {field('Site web', 'siteWeb', 'url')}
+                        {field('Téléphone secondaire', 'telephone2')}
+                        {field('Fax', 'fax')}
+                        {field('Site web', 'website', 'url')}
                         {field('Ville', 'ville')}
                         {field('Pays', 'pays')}
+                        {field('Code postal', 'codePostal')}
                         {field('Adresse complète', 'adresse')}
                         {field('Licence de voyage', 'licenceVoyage')}
-                        {field('IBAN', 'iban')}
+                        {field('ICE', 'ice')}
+                        {field('Patente', 'patente')}
+                        {field('Numéro fiscal', 'numeroFiscal')}
+                        {field('Registre de commerce', 'rc')}
                     </div>
-                    <div className="mt-5">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                        <textarea rows={4} value={agence?.description || ''}
-                                  onChange={e => setAgence({ ...agence, description: e.target.value })}
-                                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#66CAD8] resize-none" />
-                    </div>
+                    <p className="mt-5 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                        Commission contractuelle : {agence.commissionTaux ?? 0}% · Crédit : {agence.creditEnabled ? 'activé' : 'désactivé'}
+                        {agence.creditEnabled && ` · Plafond ${Number(agence.plafondCredit || 0).toLocaleString('fr-FR')} MAD`}
+                    </p>
                 </div>
             )}
         </div>

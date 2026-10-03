@@ -87,7 +87,7 @@ const StatusBadge = ({ status }) => {
 const UserDetailModal = ({ user, onClose, onApprove, onReject, actionLoading }) => {
     const [hebergementData, setHebergementData] = useState(null)
     const [hebergementLoading, setHebergementLoading] = useState(false)
-    const isHebergement = user?.role === 'HEBERGEMENT_ADMIN' || user?.role === 'HEBERGEMENT_STAFF'
+    const isHebergement = user?.role === 'HEBERGEMENT_ADMIN' || user?.role === 'HEBERGEMENT_STAFF' || user?.role === 'CLIENT'
     const id = user?.id_utilisateur || user?.id
 
     useEffect(() => {

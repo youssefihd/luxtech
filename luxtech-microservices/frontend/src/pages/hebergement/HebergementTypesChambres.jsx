@@ -337,21 +337,44 @@ export default function HebergementTypesChambres() {
         setTimeout(() => setToast(null), 3500)
     }
 
-    const fetchData = useCallback(async (isRefresh = false) => {
-        if (isRefresh) setRefreshing(true)
-        else setLoading(true)
-        try {
-            const hebergRes = await hebergementAxios.get(`/hebergement/hebergements/by-user/${userId}`).catch(() => null)
-            const h = hebergRes?.data?.data
-            setHebergement(h)
-            if (h?.id) {
-                const typesRes = await hebergementAxios.get(`/hebergement/hebergements/${h.id}/chambre-types`).catch(() => null)
-                setTypes(typesRes?.data?.data || [])
-            }
-        } catch (err) { console.error(err) }
-        finally { setLoading(false); setRefreshing(false) }
-    }, [userId])
+   const fetchData = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true)
+    else setLoading(true)
 
+    try {
+        console.log('USER ID:', userId)
+
+        const hebergRes = await hebergementAxios.get(
+            `/hebergement/hebergements/by-user/${userId}`
+        )
+
+        console.log('HEBERGEMENT RESPONSE:', hebergRes.data)
+
+        const h = hebergRes.data?.data
+
+        if (!h?.id) {
+            throw new Error("Aucun hébergement trouvé pour cet utilisateur.")
+        }
+
+        setHebergement(h)
+
+        const typesRes = await hebergementAxios.get(
+            `/hebergement/hebergements/${h.id}/chambre-types`
+        )
+
+        console.log('CHAMBRE TYPES:', typesRes.data)
+
+        setTypes(typesRes.data?.data || [])
+
+    } catch (err) {
+        console.error('ERREUR FETCH HEBERGEMENT:', err)
+        console.error('STATUS:', err.response?.status)
+        console.error('DATA:', err.response?.data)
+    } finally {
+        setLoading(false)
+        setRefreshing(false)
+    }
+}, [userId])
     useEffect(() => { fetchData() }, [fetchData])
 
     const stats = useMemo(() => {
@@ -378,30 +401,67 @@ export default function HebergementTypesChambres() {
         return list
     }, [types, search, sortBy])
 
-    const handleCreateOrUpdate = async (data, photoFile) => {
-        try {
-            let typeId = editingType?.id
-            if (editingType) {
-                await hebergementAxios.put(`/hebergement/chambre-types/${editingType.id}`, data)
-            } else {
-                const res = await hebergementAxios.post(`/hebergement/hebergements/${hebergement.id}/chambre-types`, data)
-                typeId = res?.data?.data?.id
-            }
-            if (photoFile && typeId) {
-                const formData = new FormData()
-                formData.append('photo', photoFile)
-                await hebergementAxios.post(`/hebergement/chambre-types/${typeId}/photo`, formData, {
-                    headers: { 'Content-Type': 'multipart/form-data' }
-                })
-            }
-            showToast(editingType ? 'Type mis à jour !' : 'Type créé !')
-            setShowModal(false)
-            setEditingType(null)
-            await fetchData(true)
-        } catch (err) {
-            throw new Error(err.response?.data?.message || 'Erreur lors de la sauvegarde')
+  const handleCreateOrUpdate = async (data, photoFile) => {
+    try {
+        if (!hebergement?.id) {
+            throw new Error(
+                "Aucun hébergement n'est associé à cet utilisateur."
+            )
         }
+
+        console.log("HEBERGEMENT AVANT SAUVEGARDE:", hebergement)
+        console.log("HEBERGEMENT ID:", hebergement.id)
+        console.log("DATA:", data)
+
+        let typeId = editingType?.id
+
+        if (editingType) {
+            await hebergementAxios.put(
+                `/hebergement/chambre-types/${editingType.id}`,
+                data
+            )
+        } else {
+            const res = await hebergementAxios.post(
+                `/hebergement/hebergements/${hebergement.id}/chambre-types`,
+                data
+            )
+
+            console.log("CREATE RESPONSE:", res.data)
+
+            typeId = res?.data?.data?.id
+        }
+
+        if (photoFile && typeId) {
+            const formData = new FormData()
+            formData.append('photo', photoFile)
+
+            await hebergementAxios.post(
+                `/hebergement/chambre-types/${typeId}/photo`,
+                formData
+            )
+        }
+
+        showToast(editingType ? 'Type mis à jour !' : 'Type créé !')
+        setShowModal(false)
+        setEditingType(null)
+
+        await fetchData(true)
+
+    } catch (err) {
+        console.error('===== ERREUR SAUVEGARDE =====')
+        console.error('ERROR:', err)
+        console.error('STATUS:', err.response?.status)
+        console.error('DATA:', err.response?.data)
+        console.error('MESSAGE:', err.message)
+
+        throw new Error(
+            err.response?.data?.message ||
+            err.response?.data?.error ||
+            err.message ||
+            'Erreur lors de la sauvegarde'
+        )
     }
+}
 
     const handleDelete = async (id) => {
         try {
@@ -445,7 +505,17 @@ export default function HebergementTypesChambres() {
                             <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''}/>
                             Actualiser
                         </button>
-                        <button onClick={() => { setEditingType(null); setShowModal(true) }}
+                        <button
+    disabled={!hebergement?.id}
+    onClick={() => {
+        if (!hebergement?.id) {
+            showToast('Aucun hébergement trouvé.', 'error')
+            return
+        }
+
+        setEditingType(null)
+        setShowModal(true)
+    }}
                                 className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-sm font-black transition hover:shadow-lg"
                                 style={{ color: NAVY }}>
                             <Plus size={16}/> Nouveau type

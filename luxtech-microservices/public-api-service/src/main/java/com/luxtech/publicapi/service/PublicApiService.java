@@ -28,7 +28,7 @@ public class PublicApiService {
             return hotelClient.getActiveHotels();
         } catch (Exception e) {
             log.error("Erreur recherche hotels : {}", e.getMessage());
-            return Map.of("success", false, "data", List.of());
+            return Map.of("success", false, "message", "Service hébergement indisponible.", "data", List.of());
         }
     }
 

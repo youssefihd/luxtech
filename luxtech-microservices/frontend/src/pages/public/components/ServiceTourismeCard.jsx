@@ -1,67 +1,104 @@
-import { useState, useRef, useEffect } from 'react'
-import { X } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { ArrowUpRight, X } from 'lucide-react'
 
-const ServiceTourismeCard = ({ service, index }) => {
-    const [isHovered, setIsHovered] = useState(false)
+const ServiceTourismeCard = ({ service }) => {
     const [isModalOpen, setIsModalOpen] = useState(false)
+    const [isHovered, setIsHovered] = useState(false)
     const hoverTimerRef = useRef(null)
     const Icon = service.icon
 
-    const handleMouseEnter = () => {
+    useEffect(() => {
+        return () => {
+            if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current)
+        }
+    }, [])
+
+    const handleEnter = () => {
         setIsHovered(true)
         if (service.fullDescription) {
-            hoverTimerRef.current = setTimeout(() => setIsModalOpen(true), 800)
+            hoverTimerRef.current = setTimeout(() => setIsModalOpen(true), 900)
         }
     }
-    const handleMouseLeave = () => {
+
+    const handleLeave = () => {
         setIsHovered(false)
-        if (hoverTimerRef.current) { clearTimeout(hoverTimerRef.current); hoverTimerRef.current = null }
+        if (hoverTimerRef.current) {
+            clearTimeout(hoverTimerRef.current)
+            hoverTimerRef.current = null
+        }
     }
-    useEffect(() => () => { if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current) }, [])
 
     return (
         <>
-            <div className="relative group bg-white border border-gray-200 rounded-2xl p-6 transition-all hover:-translate-y-1 hover:shadow-lg hover:border-[#00BCD4]/30 cursor-pointer"
-                 onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
-                <div className="flex items-start gap-4">
-                    <div className="relative shrink-0">
-                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg transition-all duration-300 bg-gradient-to-r from-[#00BCD4] to-[#5E35B1] ${isHovered ? 'scale-110 shadow-lg' : ''}`}>
-                            {service.number}
+            <article
+                className="group relative bg-white border border-slate-200 p-6 sm:p-7 hover:border-[#20BFD3] transition-colors cursor-pointer"
+                onMouseEnter={handleEnter}
+                onMouseLeave={handleLeave}
+                onClick={() => service.fullDescription && setIsModalOpen(true)}
+            >
+                <div className="flex justify-between items-start gap-5">
+                    <div className="flex items-start gap-5">
+                        <div className={`w-11 h-11 shrink-0 flex items-center justify-center transition ${isHovered ? 'bg-[#20BFD3] text-[#172B63]' : 'bg-[#172B63] text-white'}`}>
+                            <Icon size={19} strokeWidth={1.8} />
                         </div>
-                        <div className={`absolute -top-1 -right-1 w-6 h-6 bg-white border-2 border-[#00BCD4] rounded-full flex items-center justify-center shadow-sm transition-all duration-300 ${isHovered ? 'scale-110 rotate-12' : ''}`}>
-                            <Icon size={12} className="text-[#00BCD4]"/>
-                        </div>
-                    </div>
-                    <div className="flex-1">
-                        <h3 className={`text-lg font-bold mb-2 transition-colors duration-300 ${isHovered ? 'text-[#00BCD4]' : 'text-gray-900'}`}>
-                            {service.title}
-                        </h3>
-                        <p className="text-gray-600 leading-relaxed text-md mb-3">{service.summary}</p>
-                        {service.fullDescription && (
-                            <div className={`flex items-center gap-2 text-xs font-medium transition-all duration-300 ${isHovered ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1'}`}>
-                                <span className="inline-block w-1.5 h-1.5 bg-[#00BCD4] rounded-full animate-pulse"/>
-                                <span className="text-[#00BCD4]">Survolez pour plus de détails</span>
+
+                        <div>
+                            <div className="flex items-center gap-2 mb-2">
+                                <span className="text-[10px] uppercase tracking-[0.18em] text-slate-400">
+                                    Service {String(service.number).padStart(2, '0')}
+                                </span>
                             </div>
-                        )}
+                            <h3 className="text-lg font-semibold text-slate-900 group-hover:text-[#1677C8] transition">
+                                {service.title}
+                            </h3>
+                            <p className="text-sm leading-6 text-slate-500 mt-2 max-w-xl">
+                                {service.summary}
+                            </p>
+                        </div>
                     </div>
+
+                    <ArrowUpRight
+                        size={18}
+                        className={`shrink-0 text-slate-300 transition-transform ${isHovered ? 'text-[#1677C8] -translate-y-0.5 translate-x-0.5' : ''}`}
+                    />
                 </div>
-                <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br from-[#00BCD4]/5 to-[#5E35B1]/5 transition-opacity duration-300 -z-10 ${isHovered ? 'opacity-100' : 'opacity-0'}`}/>
-            </div>
+            </article>
 
             {service.fullDescription && isModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setIsModalOpen(false)}>
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden" onClick={e => e.stopPropagation()}>
-                        <div className="p-6 text-white relative bg-gradient-to-r from-[#00BCD4] to-[#5E35B1]">
-                            <button onClick={() => setIsModalOpen(false)} className="absolute top-4 right-4 p-2 rounded-xl bg-white/10 hover:bg-white/20 transition"><X size={18}/></button>
-                            <span className="inline-block w-8 h-8 rounded-lg bg-white/20 text-center leading-8 font-black text-sm mb-2">{service.number}</span>
-                            <h2 className="text-xl font-black">{service.title}</h2>
-                            {service.soustitle && <p className="text-white/80 text-sm mt-1">{service.soustitle}</p>}
-                        </div>
-                        <div className="p-6">
-                            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                                <span className="w-1 h-4 bg-gradient-to-b from-[#00BCD4] to-[#5E35B1] rounded-full"/> Vue d'ensemble
-                            </h3>
-                            <p className="text-gray-700 leading-relaxed text-sm whitespace-pre-line">{service.fullDescription}</p>
+                <div
+                    className="fixed inset-0 z-[60] bg-[#0B1733]/60 flex items-center justify-center p-4"
+                    onClick={() => setIsModalOpen(false)}
+                >
+                    <div
+                        className="w-full max-w-2xl bg-white shadow-2xl"
+                        onClick={event => event.stopPropagation()}
+                    >
+                        <header className="bg-[#172B63] text-white px-6 py-6 flex items-start justify-between gap-6">
+                            <div>
+                                <p className="text-[10px] uppercase tracking-[0.2em] text-cyan-200">
+                                    Service {String(service.number).padStart(2, '0')}
+                                </p>
+                                <h2 className="text-2xl font-semibold mt-2">{service.title}</h2>
+                                {service.soustitle && (
+                                    <p className="text-sm text-white/65 mt-1">{service.soustitle}</p>
+                                )}
+                            </div>
+                            <button
+                                onClick={() => setIsModalOpen(false)}
+                                className="w-9 h-9 border border-white/15 flex items-center justify-center hover:bg-white/10"
+                                aria-label="Fermer"
+                            >
+                                <X size={17} />
+                            </button>
+                        </header>
+
+                        <div className="px-6 py-7 sm:px-8 sm:py-9">
+                            <p className="text-[10px] uppercase tracking-[0.18em] font-semibold text-slate-400 mb-3">
+                                Vue d'ensemble
+                            </p>
+                            <p className="text-slate-700 leading-7 text-sm whitespace-pre-line">
+                                {service.fullDescription}
+                            </p>
                         </div>
                     </div>
                 </div>

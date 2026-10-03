@@ -22,7 +22,7 @@ public class User {
     @NotBlank @Column(nullable = false) private String password;
     @Enumerated(EnumType.STRING) @Column(nullable = false, length = 30) private UserRole role;
     @Enumerated(EnumType.STRING) @Column(nullable = false, length = 30) @Builder.Default private UserStatus status = UserStatus.PENDING_APPROVAL;
-    @Column(name = "is_active") @Builder.Default private Boolean isActive = false;
+    @Column(name = "is_active") @Builder.Default private Boolean isActive = Boolean.FALSE;
     @Column(name = "email_verified_at") private LocalDateTime emailVerifiedAt;
     @Column(name = "hebergement_id") private Long hebergementId;
     @Column(name = "agency_id") private Long agencyId;

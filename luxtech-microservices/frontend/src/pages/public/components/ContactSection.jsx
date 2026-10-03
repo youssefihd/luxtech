@@ -16,7 +16,7 @@ const ContactSection = () => {
     const ic = "w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#00BCD4] transition"
 
     return (
-        <SectionContainer bgColor="bg-gradient-to-br from-gray-50 to-white" withGradientBlobs>
+        <SectionContainer id="contact" className="scroll-mt-24" bgColor="bg-gradient-to-br from-gray-50 to-white" withGradientBlobs>
             <ContentWrapper maxWidth="max-w-6xl">
                 <SectionHeader title="Prêt à" highlightText="commencer"
                                description="Discutons de votre projet et découvrez comment LuxTech peut transformer votre activité hôtelière."/>

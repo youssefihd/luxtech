@@ -1249,6 +1249,8 @@ export default function HebergementReservations() {
     const stats = useMemo(() => ({
         total: enrichedReservations.length,
         pending: enrichedReservations.filter(r => r.status === 'EN_ATTENTE').length,
+        pendingAgency: enrichedReservations.filter(r => r.source === 'AGENCE'
+            && (r.status === 'EN_ATTENTE' || r.annulationDemandeStatut === 'DEMANDEE')).length,
         confirmed: enrichedReservations.filter(r => r.status === 'CONFIRMEE').length,
         checkIn: enrichedReservations.filter(r => r.status === 'CHECKIN').length,
     }), [enrichedReservations])
@@ -1326,6 +1328,22 @@ export default function HebergementReservations() {
         try { await bookingAxios.post(`/booking/reservations/${id}/annuler`); await fetchData(true); showToast('Réservation annulée.') }
         catch (err) { showToast(err.response?.data?.message || 'Erreur.', 'error') }
     }
+    const handleCancellationDecision = async (id, acceptee) => {
+        let motifRefus = null
+        if (acceptee) {
+            if (!window.confirm('Accepter la demande et annuler la reservation ?')) return
+        } else {
+            motifRefus = window.prompt('Motif du refus de la demande ?')
+            if (motifRefus === null) return
+            if (!motifRefus.trim()) { showToast('Indiquez le motif du refus.', 'error'); return }
+        }
+        try {
+            await bookingAxios.post(`/booking/hotel/reservations/${id}/annulation-decision`, { acceptee, motifRefus })
+            await fetchData(true)
+            showToast(acceptee ? 'Annulation acceptee.' : 'Demande refusee.')
+        } catch (err) { showToast(err.response?.data?.message || 'Erreur.', 'error') }
+    }
+
     const handlePayment = async (id, montant, isConfirm) => {
         try {
             if (montant > 0) await bookingAxios.post(`/booking/reservations/${id}/paiement`, { montant })
@@ -1473,9 +1491,10 @@ export default function HebergementReservations() {
                     </div>
                 </div>
             </div>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
                 <KPICard title="Total réservations" value={stats.total} icon={TrendingUp} color="#2563eb" bg="#dbeafe" active={filterStatus === 'ALL'} onClick={() => { setFilterStatus('ALL'); setCurrentPage(1) }}/>
                 <KPICard title="En attente" value={stats.pending} icon={Clock} color="#d97706" bg="#fef3c7" active={filterStatus === 'EN_ATTENTE'} onClick={() => { setFilterStatus('EN_ATTENTE'); setCurrentPage(1) }}/>
+                <KPICard title="Demandes agences" value={stats.pendingAgency} icon={Briefcase} color={PURPLE} bg="#ede9fe" active={filterStatus === 'ALL' && filterSource === 'AGENCE'} onClick={() => { setFilterStatus('ALL'); setFilterSource('AGENCE'); setCurrentPage(1) }}/>
                 <KPICard title="Confirmées" value={stats.confirmed} icon={CheckCircle} color="#059669" bg="#d1fae5" active={filterStatus === 'CONFIRMEE'} onClick={() => { setFilterStatus('CONFIRMEE'); setCurrentPage(1) }}/>
                 <KPICard title="Check-in en cours" value={stats.checkIn} icon={User} color={PURPLE} bg="#ede9fe" active={filterStatus === 'CHECKIN'} onClick={() => { setFilterStatus('CHECKIN'); setCurrentPage(1) }}/>
             </div>
@@ -1664,6 +1683,14 @@ export default function HebergementReservations() {
                                             </td>
                                             <td className="px-5 py-4">
                                                 <StatusBadge status={r.status}/>
+                                                {r.annulationDemandeStatut === 'DEMANDEE' && (
+                                                    <p className="mt-1 max-w-40 text-[10px] font-semibold text-amber-700">
+                                                        Demande agence: {r.annulationDemandeMotif || 'sans motif'}
+                                                    </p>
+                                                )}
+                                                {r.annulationDemandeStatut === 'REFUSEE' && r.annulationRefusMotif && (
+                                                    <p className="mt-1 max-w-40 text-[10px] text-red-600">Refus: {r.annulationRefusMotif}</p>
+                                                )}
                                             </td>
                                             <td className="px-5 py-4">
                                                 {src ? (
@@ -1674,6 +1701,20 @@ export default function HebergementReservations() {
                                             </td>
                                             <td className="px-5 py-4">
                                                 <div className="flex items-center gap-1">
+                                                    {r.annulationDemandeStatut === 'DEMANDEE' && (
+                                                        <>
+                                                            <button onClick={() => handleCancellationDecision(r.id, true)}
+                                                                    className="flex items-center gap-1 rounded-lg bg-red-50 px-2 py-1.5 text-xs font-bold text-red-700 hover:bg-red-100"
+                                                                    title="Accepter la demande d'annulation">
+                                                                <Check size={11}/> Accepter annulation
+                                                            </button>
+                                                            <button onClick={() => handleCancellationDecision(r.id, false)}
+                                                                    className="p-1.5 text-gray-500 transition hover:bg-gray-100"
+                                                                    title="Refuser la demande d'annulation">
+                                                                <X size={14}/>
+                                                            </button>
+                                                        </>
+                                                    )}
                                                     {r.status === 'EN_ATTENTE' && (
                                                         <button onClick={() => setPaymentModal({ open: true, reservation: r })}
                                                                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-white transition hover:shadow-sm"

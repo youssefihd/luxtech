@@ -1,17 +1,24 @@
 server:
   port: 8080
 spring:
-  application:
-    name: api-gateway
   cloud:
     gateway:
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin RETAIN_FIRST
+
       globalcors:
+        add-to-simple-url-handler-mapping: true
         cors-configurations:
           '[/**]':
             allowedOrigins:
               - "http://localhost:5173"
               - "http://localhost:3000"
-            allowedMethods: "*"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
             allowedHeaders: "*"
             allowCredentials: true
       routes:
@@ -25,6 +32,18 @@ spring:
             - Path=/api/hebergement/**
           filters:
             - name: JwtAuthFilter
+        - id: booking-service-agency
+          uri: lb://booking-service
+          predicates:
+            - Path=/api/booking/agency/**
+          filters:
+            - name: JwtAuthFilter
+        - id: booking-service-hotel
+          uri: lb://booking-service
+          predicates:
+            - Path=/api/booking/hotel/**
+          filters:
+            - name: JwtAuthFilter
         - id: booking-service-public
           uri: lb://booking-service
           predicates:
@@ -35,12 +54,10 @@ spring:
             - Path=/api/reservations/**
           filters:
             - name: JwtAuthFilter
-        - id: payment-service
-          uri: lb://payment-service
+        - id: iso8583-payment-gateway
+          uri: lb://iso8583-payment-gateway
           predicates:
-            - Path=/api/payment/**
-          filters:
-            - name: JwtAuthFilter
+            - Path=/api/payments/**
         - id: agency-service
           uri: lb://agency-service
           predicates:

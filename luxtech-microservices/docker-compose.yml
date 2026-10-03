@@ -57,6 +57,8 @@ services:
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: password
       JWT_SECRET: bXlTdXBlclNlY3JldEtleUZvckx1eHRlY2hNaWNyb3NlcnZpY2VzMjAyNA==
+      SPRING_MAIL_USERNAME: ${SMTP_USERNAME:-rukiya2020rukiya@gmail.com}
+      SPRING_MAIL_PASSWORD: ${SMTP_APP_PASSWORD:?Define SMTP_APP_PASSWORD in your environment}
     networks: [luxtech-network]
 
   hotel-service:
@@ -117,6 +119,8 @@ services:
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: password
       SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_MAIL_USERNAME: ${SMTP_USERNAME:-rukiya2020rukiya@gmail.com}
+      SPRING_MAIL_PASSWORD: ${SMTP_APP_PASSWORD:?Define SMTP_APP_PASSWORD in your environment}
     networks: [luxtech-network]
 
   public-api-service:

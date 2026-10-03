@@ -5,17 +5,17 @@ spring:
   application:
     name: notification-service
   datasource:
-    url: jdbc:mysql://localhost:3306/luxtech_notification?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
-    username: root
-    password:
-    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:postgresql://localhost:5455/testdb
+    username: postgres
+    password: adil
+    driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
       ddl-auto: update
     show-sql: false
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.MySQLDialect
+        dialect: org.hibernate.dialect.PostgreSQLDialect
   rabbitmq:
     host: localhost
     port: 5672
@@ -24,8 +24,8 @@ spring:
   mail:
     host: smtp.gmail.com
     port: 587
-    username: sarafallahi59@gmail.com
-    password:
+    username: ${SMTP_USERNAME:rukiya2020rukiya@gmail.com}
+    password: ${SMTP_APP_PASSWORD:}
     properties:
       mail:
         smtp:

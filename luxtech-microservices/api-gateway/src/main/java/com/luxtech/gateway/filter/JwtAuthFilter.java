@@ -51,17 +51,25 @@ public class JwtAuthFilter extends
 
                 ServerWebExchange mutated = exchange.mutate()
                         .request(r -> r
-                                .header("X-User-Id",
-                                        claims.getSubject())
-                                .header("X-User-Role",
-                                        claims.get("role", String.class) != null
-                                                ? claims.get("role", String.class) : "")
-                                .header("X-User-Email",
-                                        claims.get("email", String.class) != null
-                                                ? claims.get("email", String.class) : "")
-                                .header("X-User-Nom",
-                                        claims.get("nom", String.class) != null
-                                                ? claims.get("nom", String.class) : ""))
+                                .headers(headers -> {
+                                    headers.remove("X-User-Id");
+                                    headers.remove("X-User-Role");
+                                    headers.remove("X-User-Email");
+                                    headers.remove("X-User-Nom");
+                                    headers.remove("X-Agency-Id");
+                                    headers.remove("X-Hotel-Id");
+                                    headers.add("X-User-Id", claims.getSubject());
+                                    headers.add("X-User-Role", claims.get("role", String.class) != null
+                                            ? claims.get("role", String.class) : "");
+                                    headers.add("X-User-Email", claims.get("email", String.class) != null
+                                            ? claims.get("email", String.class) : "");
+                                    headers.add("X-User-Nom", claims.get("nom", String.class) != null
+                                            ? claims.get("nom", String.class) : "");
+                                    Object agencyId = claims.get("agencyId");
+                                    if (agencyId != null) headers.add("X-Agency-Id", agencyId.toString());
+                                    Object hotelId = claims.get("hotelId");
+                                    if (hotelId != null) headers.add("X-Hotel-Id", hotelId.toString());
+                                }))
                         .build();
 
                 return chain.filter(mutated);

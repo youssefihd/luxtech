@@ -61,7 +61,7 @@ const SolutionsPage = ({ onLoginClick, onRegisterClick }) => {
         {
             icon: Hotel, title: 'PMS – Pour les hôtels', category: 'Gestion Hôtelière',
             description: 'Solution complète de Property Management System pour une gestion optimisée de votre établissement',
-            features: ['Planning intelligent des chambres', 'Réservations multi-canaux', 'Comptabilité & facturation intégrées', 'Housekeeping en temps réel', 'Inventaire dynamique', 'Rapports et statistiques avancés'],
+            features: ['Planning intelligent des chambres', 'Réservations multi-canaux', 'Comptabilité & facturation intégrées', 'Housekeeping en temps réel', 'ntaire dynamique', 'Rapports et statistiques avancés'],
             advantages: ['Compatible hôtels classés et non classés', 'Réduction du surbooking à 0%', "Gain de temps jusqu'à 70%", 'Meilleure gestion des revenus', "Optimisation du taux d'occupation"],
         },
         {

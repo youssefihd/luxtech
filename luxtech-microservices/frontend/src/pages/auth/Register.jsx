@@ -6,6 +6,7 @@ import {
     MapPin, Star, Map, FileText, RefreshCw
 } from 'lucide-react'
 import axios from '../../api/axios'
+import { agencyAdminApi } from '../../api/agencyAdminApi'
 
 const TOTAL_STEPS = 9
 
@@ -762,7 +763,7 @@ export default function Register() {
     const handleSubmit = async () => {
         setLoading(true); setErrors({})
         try {
-            const res = await axios.post('/auth/register', {
+            const registrationData = {
                 nom: data.nom,
                 prenom: data.prenom,
                 email: data.email,
@@ -781,7 +782,10 @@ export default function Register() {
                 services: data.services,
                 licenceVoyage: data.licenceVoyage || undefined,
                 telephoneEtablissement: data.telephoneEtablissement || undefined,
-            })
+            }
+            const res = data.role === 'AGENCY_ADMIN'
+                ? await agencyAdminApi.register(registrationData)
+                : await axios.post('/auth/register', registrationData)
 
             if (res.data?.data) {
                 localStorage.setItem('user', JSON.stringify(res.data.data))

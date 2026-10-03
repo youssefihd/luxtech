@@ -425,9 +425,29 @@ public class HebergementService {
     }
     @Transactional(readOnly = true)
     public Hebergement getHebergementByUserId(Long userId) {
-        List<Hebergement> hebergements = hebergementRepository.findByUserId(userId);
-        if (hebergements.isEmpty()) throw new HebergementException("Hebergement non trouve.", 404);
-        return hebergements.get(0);
+
+        log.info("========== GET HEBERGEMENT BY USER ==========");
+        log.info("Searching hebergement for userId={}", userId);
+
+        List<Hebergement> hebergements =
+                hebergementRepository.findByUserId(userId);
+
+        log.info("Found {} hebergement(s) for userId={}",
+                hebergements.size(), userId);
+
+        if (hebergements.isEmpty()) {
+            log.warn("NO HEBERGEMENT FOUND FOR userId={}", userId);
+            throw new HebergementException("Hebergement non trouve.", 404);
+        }
+
+        Hebergement h = hebergements.get(0);
+
+        log.info("HEBERGEMENT FOUND: id={}, userId={}, nom={}",
+                h.getId(),
+                h.getUserId(),
+                h.getNom());
+
+        return h;
     }
     // ══════════════════════════════════════════════════════
 // PHOTOS / DOCUMENTS — gestion individuelle

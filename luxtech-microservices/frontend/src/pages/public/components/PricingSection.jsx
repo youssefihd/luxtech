@@ -15,7 +15,7 @@ const PricingSection = () => {
     }
 
     return (
-        <SectionContainer bgColor="bg-gradient-to-br from-gray-50 to-white" withGradientBlobs>
+        <SectionContainer id="pricing" className="scroll-mt-24" bgColor="bg-gradient-to-br from-gray-50 to-white" withGradientBlobs>
             <ContentWrapper>
                 <SectionHeader title="Un tarif" highlightText="unique & transparent"
                                description="Profitez de la puissance de LuxTech avec un plan tout-en-un conçu pour tous les acteurs du tourisme."/>

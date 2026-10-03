@@ -18,6 +18,7 @@ import com.luxtech.booking.repository.ReservationRepository;
 import com.luxtech.booking.repository.ReservationServiceRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -42,6 +43,9 @@ public class BookingService {
     private final FacturePdfService     facturePdfService;
     private final HebergementClient     hebergementClient;
     private final PaymentClient         paymentClient;
+
+    @Value("${spring.datasource.url}")
+    private String datasourceUrl;
 
     // ══════════════════════════════════════════════════════
     // CREATION
@@ -257,6 +261,55 @@ public class BookingService {
     // PAIEMENT
     // ══════════════════════════════════════════════════════
 
+    public Reservation demanderAnnulationAgence(Long id, Long agencyId, Long userId, String motif) {
+        Reservation reservation = getById(id);
+        if (!agencyId.equals(reservation.getAgencyId())
+                || reservation.getSource() != Reservation.ReservationSource.AGENCE) {
+            throw new BookingException("Reservation not found for this agency.", 404);
+        }
+        if (!reservation.isAnnulable()) {
+            throw new BookingException("Cette reservation ne peut plus etre annulee.", 409);
+        }
+        if (reservation.getAnnulationDemandeStatut() == Reservation.CancellationRequestStatus.DEMANDEE) {
+            throw new BookingException("Une demande d'annulation est deja en attente.", 409);
+        }
+
+        reservation.setAnnulationDemandeStatut(Reservation.CancellationRequestStatus.DEMANDEE);
+        reservation.setAnnulationDemandeMotif(motif);
+        reservation.setAnnulationDemandeAt(LocalDateTime.now());
+        reservation.setAnnulationDemandePar(userId);
+        reservation.setAnnulationRefusMotif(null);
+        Reservation saved = reservationRepository.save(reservation);
+        publishEvent("reservation.cancellation-requested", saved.getId());
+        notifierProprietaire(saved.getHotelId(), "RESERVATION", "Demande d'annulation agence",
+                String.format("%s - %s", saved.getNumeroReservation(), motif != null ? motif : "Motif non precise"));
+        return saved;
+    }
+
+    public Reservation deciderAnnulation(Long id, boolean acceptee, String motifRefus) {
+        Reservation reservation = getById(id);
+        if (reservation.getAnnulationDemandeStatut() != Reservation.CancellationRequestStatus.DEMANDEE) {
+            throw new BookingException("Aucune demande d'annulation en attente.", 409);
+        }
+
+        if (acceptee) {
+            BigDecimal montantPaye = reservation.getMontantPaye() != null ? reservation.getMontantPaye() : BigDecimal.ZERO;
+            if (montantPaye.compareTo(BigDecimal.ZERO) > 0) {
+                throw new BookingException("Traitez le remboursement avant d'accepter l'annulation.", 409);
+            }
+            reservation = annuler(id);
+            reservation.setAnnulationDemandeStatut(Reservation.CancellationRequestStatus.ACCEPTEE);
+            reservation.setMotifAnnulation(reservation.getAnnulationDemandeMotif());
+        } else {
+            reservation.setAnnulationDemandeStatut(Reservation.CancellationRequestStatus.REFUSEE);
+            reservation.setAnnulationRefusMotif(motifRefus);
+        }
+
+        Reservation saved = reservationRepository.save(reservation);
+        publishEvent(acceptee ? "reservation.cancellation-accepted" : "reservation.cancellation-refused", saved.getId());
+        return saved;
+    }
+
     public Reservation enregistrerPaiement(Long id, BigDecimal montant, Facture.MethodePaiement methode) {
         Reservation r = getById(id);
 
@@ -410,7 +463,14 @@ public class BookingService {
     }
 
     private String genererNumeroFacture(Long hotelId) {
-        factureCounterRepository.ensureExists(hotelId);
+        String jdbcUrl = datasourceUrl != null ? datasourceUrl.toLowerCase(Locale.ROOT) : "";
+        if (jdbcUrl.startsWith("jdbc:postgresql:")) {
+            factureCounterRepository.ensureExistsPostgres(hotelId);
+        } else if (jdbcUrl.startsWith("jdbc:mysql:") || jdbcUrl.startsWith("jdbc:mariadb:")) {
+            factureCounterRepository.ensureExistsMysql(hotelId);
+        } else {
+            throw new BookingException("Base de donnees non supportee pour le compteur de factures.", 500);
+        }
         FactureCounter counter = factureCounterRepository.findByHotelIdForUpdate(hotelId)
                 .orElseThrow(() -> new BookingException("Erreur génération numéro de facture.", 500));
         counter.setDernierNumero(counter.getDernierNumero() + 1);
@@ -421,6 +481,11 @@ public class BookingService {
     @Transactional(readOnly = true)
     public List<Facture> getFacturesByHotel(Long hotelId) {
         return factureRepository.findByHotelId(hotelId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Facture> getFacturesByAgency(Long agencyId) {
+        return factureRepository.findByAgenceId(agencyId);
     }
 
     @Transactional(readOnly = true)
@@ -737,6 +802,9 @@ public class BookingService {
 
         long nbNuits = req.getDateArrivee().until(req.getDateDepart()).getDays();
         BigDecimal prixNuit = chambreLibre.getPrixNuitee() != null ? chambreLibre.getPrixNuitee() : chambreLibre.getPrixBase();
+        if (prixNuit == null || prixNuit.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BookingException("Aucun tarif valide n'est configuré pour cette chambre.", 409);
+        }
         BigDecimal prixTotal = prixNuit.multiply(BigDecimal.valueOf(nbNuits));
 
         BookingDto.CreateReservationRequest createReq = BookingDto.CreateReservationRequest.builder()
@@ -758,6 +826,50 @@ public class BookingService {
                 .build();
 
         return createReservation(createReq, null);
+    }
+
+    public Reservation creerReservationAgence(BookingDto.PublicReservationRequest req, Long agencyId, Long userId) {
+        if (!req.getDateDepart().isAfter(req.getDateArrivee())) {
+            throw new BookingException("La date de départ doit être après la date d'arrivée.", 400);
+        }
+
+        ChambreApiResponse chambresResp;
+        try {
+            chambresResp = hebergementClient.getChambresByHotel(req.getHotelId());
+        } catch (Exception e) {
+            throw new BookingException("Établissement indisponible.", 503);
+        }
+        if (chambresResp == null || !chambresResp.isSuccess() || chambresResp.getData() == null) {
+            throw new BookingException("Établissement indisponible.", 503);
+        }
+
+        int adultes = req.getNbAdultes() != null ? req.getNbAdultes() : 1;
+        int enfants = req.getNbEnfants() != null ? req.getNbEnfants() : 0;
+        ChambreApiResponse.ChambreData chambreLibre = chambresResp.getData().stream()
+                .filter(c -> req.getChambreTypeId().equals(c.getChambreTypeId()))
+                .filter(c -> !"HORS_SERVICE".equals(c.getStatus()))
+                .filter(c -> c.getCapaciteAdultes() == null || c.getCapaciteAdultes() >= adultes)
+                .filter(c -> c.getCapaciteEnfants() == null || c.getCapaciteEnfants() >= enfants)
+                .filter(c -> reservationRepository.findConflicts(c.getId(), req.getDateArrivee(), req.getDateDepart()).isEmpty())
+                .findFirst()
+                .orElseThrow(() -> new BookingException("Plus aucune chambre disponible pour ce type sur ces dates.", 409));
+
+        long nbNuits = req.getDateArrivee().until(req.getDateDepart()).getDays();
+        BigDecimal prixNuit = chambreLibre.getPrixNuitee() != null ? chambreLibre.getPrixNuitee() : chambreLibre.getPrixBase();
+        if (prixNuit == null || prixNuit.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BookingException("Aucun tarif valide n'est configuré pour cette chambre.", 409);
+        }
+        BigDecimal prixTotal = prixNuit.multiply(BigDecimal.valueOf(nbNuits));
+        BookingDto.CreateReservationRequest createReq = BookingDto.CreateReservationRequest.builder()
+                .hotelId(req.getHotelId()).chambreId(chambreLibre.getId())
+                .chambreTypeId(req.getChambreTypeId()).agencyId(agencyId)
+                .clientNom(req.getClientNom()).clientPrenom(req.getClientPrenom())
+                .clientEmail(req.getClientEmail()).clientTelephone(req.getClientTelephone())
+                .dateArrivee(req.getDateArrivee()).dateDepart(req.getDateDepart())
+                .nbAdultes(adultes).nbEnfants(enfants).prixTotal(prixTotal)
+                .source(Reservation.ReservationSource.AGENCE).notes(req.getNotes()).build();
+
+        return createReservation(createReq, userId);
     }
 
     // ══════════════════════════════════════════════════════
@@ -792,6 +904,10 @@ public class BookingService {
                 .status(r.getStatus())
                 .paymentStatus(r.getPaymentStatus())
                 .source(r.getSource())
+                .annulationDemandeStatut(r.getAnnulationDemandeStatut())
+                .annulationDemandeMotif(r.getAnnulationDemandeMotif())
+                .annulationDemandeAt(r.getAnnulationDemandeAt())
+                .annulationRefusMotif(r.getAnnulationRefusMotif())
                 .notes(r.getNotes())
                 .createdAt(r.getCreatedAt())
                 .build();

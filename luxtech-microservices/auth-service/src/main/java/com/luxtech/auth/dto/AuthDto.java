@@ -71,6 +71,7 @@ public class AuthDto {
         String adresse;
         String poste;
         LocalDateTime createdAt;
+        String password;
     }
 
     @Data @Builder @NoArgsConstructor @AllArgsConstructor

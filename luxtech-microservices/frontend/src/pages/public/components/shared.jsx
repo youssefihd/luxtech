@@ -1,123 +1,140 @@
-import { useState, useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from "react";
 
-export const NAVY = '#1D2252'
-export const CYAN = '#66CAD8'
-export const PURPLE = '#5D2E8B'
+export const SectionContainer = ({
+  children,
+  id,
+  className = "",
+  py = "py-16 md:py-20",
+}) => (
+  <section id={id} className={`${py} ${className}`}>
+    {children}
+  </section>
+);
 
-export const useIntersectionObserver = (options = {}) => {
-    const [isVisible, setIsVisible] = useState(false)
-    const ref = useRef(null)
+export const ContentWrapper = ({
+  children,
+  className = "",
+  maxWidth = "max-w-7xl",
+}) => (
+  <div className={`mx-auto w-full ${maxWidth} px-5 sm:px-8 lg:px-10 ${className}`}>
+    {children}
+  </div>
+);
 
-    useEffect(() => {
-        const el = ref.current
-        if (!el) return
-        const observer = new IntersectionObserver(([entry]) => {
-            if (entry.isIntersecting) {
-                setIsVisible(true)
-                observer.unobserve(el)
-            }
-        }, { threshold: 0.15, ...options })
-        observer.observe(el)
-        return () => observer.disconnect()
-    }, [])
+export const SectionHeader = ({
+  title,
+  highlightText,
+  description,
+  isVisible = true,
+}) => (
+  <div
+    className={`max-w-3xl transition-all duration-700 ${
+      isVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
+    }`}
+  >
+    <div className="h-1 w-10 bg-[#00bcd4]" />
+    <h2 className="mt-5 text-3xl font-semibold tracking-tight text-[#102a43] md:text-4xl">
+      {title}{" "}
+      {highlightText && (
+        <span className="text-[#0b5fc6]">{highlightText}</span>
+      )}
+    </h2>
+    {description && (
+      <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">
+        {description}
+      </p>
+    )}
+  </div>
+);
 
-    return [ref, isVisible]
-}
+export const AnimatedElement = ({
+  children,
+  animation = "fade-up",
+  delay = 0,
+}) => (
+  <div
+    className="animate-[luxtechFadeUp_.65s_cubic-bezier(.22,1,.36,1)_both]"
+    style={{ animationDelay: `${delay}ms` }}
+    data-animation={animation}
+  >
+    {children}
+  </div>
+);
 
-export const SectionContainer = ({ children, className = '', py = 'py-16 md:py-24', bgColor = '', withGradientBlobs = false }) => (
-    <section className={`relative w-full overflow-hidden ${py} ${bgColor} ${className}`}>
-        {withGradientBlobs && (
-            <>
-                <div className="absolute top-0 left-[-10%] w-72 h-72 bg-blue-100 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"/>
-                <div className="absolute bottom-0 right-[-10%] w-72 h-72 bg-purple-100 rounded-full mix-blend-multiply filter blur-3xl opacity-40 pointer-events-none"/>
-            </>
-        )}
-        <div className="relative">{children}</div>
-    </section>
-)
+export const Button = ({
+  children,
+  onClick,
+  variant = "primary",
+  className = "",
+  type = "button",
+}) => {
+  const variants = {
+    primary: "bg-[#0b5fc6] text-white hover:bg-[#084eaa]",
+    outline:
+      "border border-slate-300 bg-white text-[#102a43] hover:border-[#0b5fc6] hover:text-[#0b5fc6]",
+  };
 
-export const ContentWrapper = ({ children, className = '', maxWidth = 'max-w-7xl' }) => (
-    <div className={`${maxWidth} mx-auto ${className}`}>
-        {children}
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      className={`inline-flex items-center justify-center px-5 py-3 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 ${variants[variant]} ${className}`}
+    >
+      {children}
+    </button>
+  );
+};
+
+export const GradientText = ({ children, className = "" }) => (
+  <span className={`text-[#0b5fc6] ${className}`}>{children}</span>
+);
+
+export const FeatureCard = ({
+  icon: Icon,
+  title,
+  description,
+  features = [],
+}) => (
+  <article className="border border-slate-200 bg-white p-6 transition hover:border-[#9edee5] hover:bg-[#fbfdfe]">
+    <div className="flex h-10 w-10 items-center justify-center bg-[#eaf7fa] text-[#0b5fc6]">
+      <Icon size={19} />
     </div>
-)
+    <h3 className="mt-5 text-lg font-semibold text-[#102a43]">{title}</h3>
+    <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
+    {features.length > 0 && (
+      <div className="mt-5 space-y-2">
+        {features.map((f) => (
+          <div key={f} className="flex gap-2 text-xs text-slate-600">
+            <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-[#00bcd4]" />
+            {f}
+          </div>
+        ))}
+      </div>
+    )}
+  </article>
+);
 
-export const AnimatedElement = ({ children, animation = 'fade-up', delay = 0, isVisible = true, className = '' }) => {
-    const animations = {
-        'fade-up':    isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8',
-        'fade-right': isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-8',
-        'fade-left':  isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-8',
-        'fade-in':    isVisible ? 'opacity-100' : 'opacity-0',
-    }
-    return (
-        <div className={`transition-all duration-700 ease-out ${animations[animation] || animations['fade-up']} ${className}`}
-             style={{ transitionDelay: `${delay}ms` }}>
-            {children}
-        </div>
-    )
-}
+export const useIntersectionObserver = () => {
+  const ref = useRef(null);
+  const [visible, setVisible] = useState(false);
 
-export const GradientText = ({ children, className = '' }) => (
-    <span className={`bg-clip-text text-transparent bg-gradient-to-r ${className}`}
-          style={!className.includes('from-') ? { backgroundImage: `linear-gradient(90deg, ${NAVY}, ${PURPLE})` } : {}}>
-        {children}
-    </span>
-)
+  useEffect(() => {
+    const node = ref.current;
+    if (!node) return;
 
-export const Button = ({ children, onClick, variant = 'primary', className = '' }) => {
-    const base = 'inline-flex items-center justify-center gap-2 rounded-xl font-bold text-sm transition-all'
-    const variants = {
-        primary: 'text-white shadow-lg',
-        outline: 'border-2 border-gray-200 text-gray-700 hover:border-gray-300',
-    }
-    return (
-        <button onClick={onClick} className={`${base} ${variants[variant]} ${className}`}
-                style={variant === 'primary' ? { background: `linear-gradient(135deg, ${NAVY}, ${PURPLE})` } : {}}>
-            {children}
-        </button>
-    )
-}
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.12 }
+    );
 
-export const Badge = ({ children, className = '' }) => (
-    <span className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest ${className}`}
-          style={{ background: `${CYAN}15`, color: NAVY }}>
-        {children}
-    </span>
-)
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
 
-// SectionHeader : titre + mot-clé en dégradé + description, centré par défaut
-export const SectionHeader = ({ title, highlightText, subtitle, description, isVisible = true, center = true }) => {
-    const text = description || subtitle
-    return (
-        <div className={`mb-10 md:mb-14 ${center ? 'text-center mx-auto max-w-3xl' : ''}`}>
-            <AnimatedElement animation="fade-up" isVisible={isVisible}>
-                <h2 className="text-3xl md:text-4xl lg:text-5xl font-black text-gray-900 leading-tight mb-4">
-                    {title}{highlightText && <> <GradientText className="from-blue-600 to-indigo-600">{highlightText}</GradientText></>}
-                </h2>
-                {text && <p className="text-base md:text-lg text-gray-500 leading-relaxed">{text}</p>}
-            </AnimatedElement>
-        </div>
-    )
-}
-
-// FeatureCard : icône + titre + description + liste de points (variant compact utilisé sur la homepage)
-export const FeatureCard = ({ icon: Icon, title, description, features = [], isVisible = true, index = 0, color = CYAN }) => (
-    <AnimatedElement animation="fade-up" delay={index * 100} isVisible={isVisible}>
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 h-full hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4" style={{ background: `linear-gradient(135deg, ${CYAN}, ${PURPLE})` }}>
-                <Icon size={22} className="text-white"/>
-            </div>
-            <h3 className="font-black text-gray-900 text-lg mb-2">{title}</h3>
-            <p className="text-sm text-gray-500 leading-relaxed mb-3">{description}</p>
-            {features.length > 0 && (
-                <ul className="space-y-1.5">
-                    {features.map((f, i) => (
-                        <li key={i} className="text-xs text-gray-600 flex items-center gap-2">
-                            <span className="w-1 h-1 rounded-full shrink-0" style={{ background: color }}/> {f}
-                        </li>
-                    ))}
-                </ul>
-            )}
-        </div>
-    </AnimatedElement>
-)
+  return [ref, visible];
+};

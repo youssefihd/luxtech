@@ -1,0 +1,39 @@
+spring:
+  application:
+    name: demo
+  main:
+    allow-bean-definition-overriding: true
+  datasource:
+    url: jdbc:postgresql://localhost:5455/ragdb
+    username: postgres
+    password: adil
+    driver-class-name: org.postgresql.Driver
+
+server:
+  port: 8080
+logging:
+  level:
+    org.springframework.ai: DEBUG
+    dev.ai4j.openai4j: DEBUG
+    dev.ai4j: DEBUG
+    dev.langchain4j: DEBUG
+    reactor.netty.http.client: DEBUG
+    io.netty: DEBUG
+    reactor.netty.http.client.HttpClient: DEBUG
+    reactor.netty.transport: DEBUG
+app:
+  orchestrator:
+    base-url: http://localhost:8000
+    timeout-seconds: 60
+
+  rate-limit:
+    requests-per-minute: 30
+
+  cors:
+    allowed-origins:
+      - http://localhost:3000
+
+  jwt:
+    secret: 9f0ac3722517ac1d389758d3750cf07cf00f5422772f6ec1ce4593e93764e338
+    expiration-ms: 3600000
+

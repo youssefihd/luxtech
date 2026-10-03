@@ -17,7 +17,7 @@ export default function Login() {
         setError('')
         try {
             const user = await login(form.email, form.password)
-            if (user.role === 'SUPER_ADMIN') navigate('/admin')
+            if (user.role === 'CLIENT') navigate('/admin')
             else if (user.role === 'HEBERGEMENT_ADMIN' || user.role === 'HEBERGEMENT_STAFF') navigate('/hotel')
             else if (user.role === 'AGENCY_ADMIN' || user.role === 'AGENCY_STAFF') navigate('/agence')
             else navigate('/')

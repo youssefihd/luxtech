@@ -90,6 +90,10 @@ public class Agence {
     @Builder.Default
     private BigDecimal plafondCredit = BigDecimal.ZERO;
 
+    @Column(name = "credit_enabled", nullable = false)
+    @Builder.Default
+    private Boolean creditEnabled = false;
+
     @Column(name = "solde_actuel", precision = 12, scale = 2)
     @Builder.Default
     private BigDecimal soldeActuel = BigDecimal.ZERO;

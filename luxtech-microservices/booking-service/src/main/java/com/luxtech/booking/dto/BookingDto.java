@@ -47,8 +47,22 @@ public class BookingDto {
         BigDecimal montantPaye;
         Reservation.ReservationStatus status; Reservation.PaymentStatus paymentStatus;
         Reservation.ReservationSource source;
+        Reservation.CancellationRequestStatus annulationDemandeStatut;
+        String annulationDemandeMotif; LocalDateTime annulationDemandeAt;
+        String annulationRefusMotif;
         String notes;
         LocalDateTime createdAt;
+    }
+
+    @Data @NoArgsConstructor @AllArgsConstructor
+    public static class CancellationRequest {
+        String motif;
+    }
+
+    @Data @NoArgsConstructor @AllArgsConstructor
+    public static class CancellationDecisionRequest {
+        @NotNull Boolean acceptee;
+        String motifRefus;
     }
 
     @Data @Builder @NoArgsConstructor @AllArgsConstructor

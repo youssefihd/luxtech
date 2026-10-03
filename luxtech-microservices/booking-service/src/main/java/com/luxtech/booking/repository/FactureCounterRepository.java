@@ -12,11 +12,15 @@ import java.util.Optional;
 
 public interface FactureCounterRepository extends JpaRepository<FactureCounter, Long> {
 
-    // Crée la ligne du compteur si elle n'existe pas encore pour cet hôtel (no-op sinon).
-    // Évite la course entre deux premières factures simultanées pour un même hôtel.
+    // PostgreSQL upsert: create the counter once; concurrent requests safely become no-ops.
+    @Modifying
+    @Query(value = "INSERT INTO facture_counters (hotel_id, dernier_numero) VALUES (:hotelId, 0) ON CONFLICT (hotel_id) DO NOTHING", nativeQuery = true)
+    void ensureExistsPostgres(@Param("hotelId") Long hotelId);
+
+    // MySQL equivalent used by the Docker Compose environment.
     @Modifying
     @Query(value = "INSERT IGNORE INTO facture_counters (hotel_id, dernier_numero) VALUES (:hotelId, 0)", nativeQuery = true)
-    void ensureExists(@Param("hotelId") Long hotelId);
+    void ensureExistsMysql(@Param("hotelId") Long hotelId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT c FROM FactureCounter c WHERE c.hotelId = :hotelId")

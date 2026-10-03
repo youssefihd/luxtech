@@ -50,9 +50,11 @@ public class AuthController {
     }
 
     @GetMapping("/admin/users")
-    public ResponseEntity<AuthDto.ApiResponse<List<AuthDto.UserResponse>>> allUsers() {
+    public ResponseEntity<AuthDto.ApiResponse<List<AuthDto.UserResponse>>> allUsers(
+            @RequestParam(required = false) User.UserRole role,
+            @RequestParam(required = false) String search) {
         return ResponseEntity.ok(AuthDto.ApiResponse.ok("OK",
-                authService.getAllUsers().stream().map(authService::toUserResponse).toList()));
+                authService.searchUsers(role, search).stream().map(authService::toUserResponse).toList()));
     }
 
     @GetMapping("/admin/users/pending")

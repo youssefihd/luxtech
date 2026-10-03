@@ -1,6 +1,6 @@
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
-
+import Iso8583PaymentPage from './pages/Iso8583PaymentPage'
 // ── Public pages ──────────────────────────────────────────
 import HomePage from './pages/public/HomePage'
 import Login from './pages/auth/Login'
@@ -66,6 +66,9 @@ import HebergementEmployees from './pages/hebergement/HebergementEmployees'
 import AgencyDashboard from './pages/agency/AgencyDashboard'
 import AgencyReservations from './pages/agency/AgencyReservations'
 import AgencyProfile from './pages/agency/AgencyProfile'
+import AgencyClients from './pages/agency/AgencyClients'
+import AgencySearch from './pages/agency/AgencySearch'
+import AgencyInvoices from './pages/agency/AgencyInvoices'
 
 // ── Page placeholder ──────────────────────────────────────
 const ComingSoon = ({ title }) => (
@@ -96,7 +99,7 @@ function PrivateRoute({ children, roles }) {
 function DashboardRedirect() {
     const { user, token } = useAuth()
     if (!token) return <Navigate to="/login" replace />
-    if (user?.role === 'SUPER_ADMIN') return <Navigate to="/admin" replace />
+    if (user?.role === 'CLIENT') return <Navigate to="/admin" replace />
     if (user?.role === 'HEBERGEMENT_ADMIN' || user?.role === 'HEBERGEMENT_STAFF') return <Navigate to="/hotel" replace />
     if (user?.role === 'AGENCY_ADMIN' || user?.role === 'AGENCY_STAFF') return <Navigate to="/agence" replace />
     return <Navigate to="/login" replace />
@@ -122,7 +125,10 @@ export default function App() {
             <Route path="/register" element={<Register />} />
             <Route path="/complete-profile" element={<CompleteProfile />} />
             <Route path="/dashboard" element={<DashboardRedirect />} />
-
+<Route
+    path="/iso8583"
+    element={<VitrineWrapper Page={Iso8583PaymentPage} />}
+/>
             {/* ══ PAGES VITRINE ════════════════════════════════ */}
             <Route path="/about" element={<VitrineWrapper Page={AboutPage} />} />
             <Route path="/solutions" element={<VitrineWrapper Page={SolutionsPage} />} />
@@ -137,7 +143,7 @@ export default function App() {
 
             {/* ══ ADMIN ════════════════════════════════════════ */}
             <Route path="/admin" element={
-                <PrivateRoute roles={['SUPER_ADMIN']}><Layout /></PrivateRoute>
+                <PrivateRoute roles={['CLIENT']}><Layout /></PrivateRoute>
             }>
                 <Route index element={<AdminDashboard />} />
                 <Route path="users" element={<AdminUsers />} />
@@ -168,7 +174,7 @@ export default function App() {
 
             {/* ══ HEBERGEMENT ══════════════════════════════════ */}
             <Route path="/hotel" element={
-                <PrivateRoute roles={['HEBERGEMENT_ADMIN', 'HEBERGEMENT_STAFF']}>
+                <PrivateRoute roles={['HEBERGEMENT_ADMIN', 'CLIENT']}>
                     <HebergementLayout />
                 </PrivateRoute>
             }>
@@ -211,9 +217,9 @@ export default function App() {
                 <Route index element={<AgencyDashboard />} />
                 <Route path="reservations" element={<AgencyReservations />} />
                 <Route path="profil" element={<AgencyProfile />} />
-                <Route path="recherche" element={<ComingSoon title="Rechercher des Chambres" />} />
-                <Route path="clients" element={<ComingSoon title="Gestion des Clients" />} />
-                <Route path="factures" element={<ComingSoon title="Factures" />} />
+                <Route path="recherche" element={<AgencySearch />} />
+                <Route path="clients" element={<AgencyClients />} />
+                <Route path="factures" element={<AgencyInvoices />} />
                 <Route path="commissions" element={<ComingSoon title="Commissions" />} />
                 <Route path="paiements" element={<ComingSoon title="Paiements" />} />
                 <Route path="rapports" element={<ComingSoon title="Rapports" />} />

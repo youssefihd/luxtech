@@ -82,7 +82,7 @@ export default function AdminFactures() {
                 axios.get('/auth/admin/users').catch(() => null),
             ])
             setFactures(factRes?.data?.data || [])
-            const hebergementUsers = (usersRes?.data?.data || []).filter(u => u.role === 'HEBERGEMENT_ADMIN' && u.hotelId)
+            const hebergementUsers = (usersRes?.data?.data || []).filter(u => u.role === 'HEBERGEMENT_ADMIN' || user?.role === 'CLIENT' && u.hotelId)
             setHebergements(hebergementUsers)
         } catch (err) { console.error(err) }
         finally { setLoading(false); setRefreshing(false) }

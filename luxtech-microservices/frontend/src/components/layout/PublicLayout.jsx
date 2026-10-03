@@ -18,7 +18,7 @@ export default function AdminLayout() {
 
     const getNavItems = () => {
         const role = user?.role
-        if (role === 'SUPER_ADMIN') {
+        if (role === 'CLIENT') {
             return [
                 { path: '/admin',               label: 'Dashboard',      icon: LayoutDashboard },
                 { path: '/admin/users',          label: 'Utilisateurs',   icon: Users },

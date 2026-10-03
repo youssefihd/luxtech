@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import {
     Search, Filter, Eye, CheckCircle, XCircle, RefreshCw,
     Handshake, MapPin, Phone, Globe, Compass,
     FileText, X, ChevronDown, AlertTriangle, Users
 } from 'lucide-react'
-import axios from '../../api/axios'
+import { agencyAdminApi } from '../../api/agencyAdminApi'
 
 const TYPE_CONFIG = {
     receptives:  { label: 'Agences réceptives',  icon: Compass, desc: 'Accueillent les touristes étrangers au Maroc' },
@@ -149,33 +149,43 @@ export default function AdminAgences() {
     const [actionLoading, setActionLoading] = useState(null)
     const [toast, setToast] = useState(null)
 
-    useEffect(() => { fetchUsers() }, [type])
-
-    const showToast = (msg, t = 'success') => {
+    const showToast = useCallback((msg, t = 'success') => {
         setToast({ msg, type: t })
         setTimeout(() => setToast(null), 3000)
-    }
+    }, [])
 
-    const fetchUsers = async () => {
+    const fetchUsers = useCallback(async (searchTerm = '', signal) => {
         setLoading(true)
         try {
-            const res = await axios.get('/auth/admin/users')
+            const res = await agencyAdminApi.search(searchTerm, signal)
             const all = res.data?.data || []
-            setUsers(all.filter(u => u.role === 'AGENCY_ADMIN'))
+            setUsers(all)
         } catch (err) {
-            console.error(err)
+            if (!signal?.aborted) {
+                console.error(err)
+                showToast('Impossible de charger les agences.', 'error')
+            }
         } finally {
-            setLoading(false)
+            if (!signal?.aborted) setLoading(false)
         }
-    }
+    }, [showToast])
+
+    useEffect(() => {
+        const controller = new AbortController()
+        const timer = window.setTimeout(() => fetchUsers(search, controller.signal), search ? 300 : 0)
+        return () => {
+            window.clearTimeout(timer)
+            controller.abort()
+        }
+    }, [type, search, fetchUsers])
 
     const handleAction = async (user, action) => {
         const id = user.id_utilisateur || user.id
         setActionLoading(id + action)
         try {
-            await axios.put(`/auth/admin/users/${id}/${action}`)
+            await agencyAdminApi[action](id)
             setSelectedUser(null)
-            await fetchUsers()
+            await fetchUsers(search)
             showToast('Action effectuée avec succès !')
         } catch {
             showToast('Une erreur est survenue.', 'error')

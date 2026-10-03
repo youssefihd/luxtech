@@ -178,7 +178,7 @@ export default function AdminRapports() {
     const pending   = allUsers.filter(u => u.status === 'PENDING_APPROVAL')
     const rejected  = allUsers.filter(u => u.status === 'REJECTED')
     const suspended = allUsers.filter(u => u.status === 'SUSPENDED')
-    const hotels    = approved.filter(u => u.role === 'HEBERGEMENT_ADMIN')
+    const hotels    = approved.filter(u => u.role === 'HEBERGEMENT_ADMIN' || u?.role === 'CLIENT')
     const agences   = approved.filter(u => u.role === 'AGENCY_ADMIN')
     const tauxAppro = allUsers.length > 0 ? Math.round((approved.length / allUsers.length) * 100) : 0
 

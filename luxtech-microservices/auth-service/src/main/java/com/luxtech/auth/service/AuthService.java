@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Locale;
 
 @Service @RequiredArgsConstructor @Slf4j @Transactional
 public class AuthService {
@@ -108,6 +109,21 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public List<User> getAllUsers() { return userRepository.findAll(); }
+
+    @Transactional(readOnly = true)
+    public List<User> searchUsers(User.UserRole role, String search) {
+
+        if (search == null || search.trim().isEmpty()) {
+
+            if (role == null) {
+                return userRepository.findAll();
+            }
+
+            return userRepository.findByRole(role);
+        }
+
+        return userRepository.searchUsers(role, search.trim().toLowerCase());
+    }
 
     @Transactional(readOnly = true)
     public List<User> getPendingUsers() { return userRepository.findByStatus(User.UserStatus.PENDING_APPROVAL); }

@@ -78,8 +78,8 @@ export default function Layout() {
         return () => document.removeEventListener('mousedown', handler)
     }, [])
 
-    const profilePath = isRole('SUPER_ADMIN') ? '/admin/profil'
-        : isRole('HEBERGEMENT_ADMIN', 'HEBERGEMENT_STAFF') ? '/hotel/profil'
+    const profilePath = isRole('CLIENT') ? '/admin/profil'
+        : isRole('HEBERGEMENT_ADMIN', 'HEBERGEMENT_STAFF','CLIENT') ? '/hotel/profil'
             : '/agence/profil'
 
     const adminNav = (
@@ -179,11 +179,11 @@ export default function Layout() {
         </>
     )
 
-    const nav = isRole('SUPER_ADMIN') ? adminNav
+    const nav = isRole('CLIENT') ? adminNav
         : isRole('HEBERGEMENT_ADMIN', 'HEBERGEMENT_STAFF') ? hotelNav
             : agenceNav
 
-    const title = isRole('SUPER_ADMIN') ? 'Administration'
+    const title = isRole('CLIENT') ? 'Administration'
         : isRole('HEBERGEMENT_ADMIN', 'HEBERGEMENT_STAFF') ? 'Gestion Hebergement'
             : 'Espace Agence'
 

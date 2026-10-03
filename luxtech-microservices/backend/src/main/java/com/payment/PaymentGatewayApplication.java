@@ -13,15 +13,5 @@ public class PaymentGatewayApplication {
         SpringApplication.run(PaymentGatewayApplication.class, args);
 
     }
-    @Bean
-    CommandLineRunner startMockProcessor() {
-        return args -> {
-            Thread processorThread = new Thread(
-                    () -> new MockProcessorServer(9876).start()
-            );
 
-            processorThread.setName("mock-processor");
-            processorThread.start();
-        };
-    }
 }

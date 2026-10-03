@@ -144,6 +144,23 @@ public class Reservation {
     @Column(name = "annule_par", length = 50)
     private String annulePar;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "annulation_demande_statut", length = 20)
+    @Builder.Default
+    private CancellationRequestStatus annulationDemandeStatut = CancellationRequestStatus.AUCUNE;
+
+    @Column(name = "annulation_demande_motif", columnDefinition = "TEXT")
+    private String annulationDemandeMotif;
+
+    @Column(name = "annulation_demande_at")
+    private LocalDateTime annulationDemandeAt;
+
+    @Column(name = "annulation_demande_par")
+    private Long annulationDemandePar;
+
+    @Column(name = "annulation_refus_motif", columnDefinition = "TEXT")
+    private String annulationRefusMotif;
+
     @Column(name = "montant_remboursement", precision = 12, scale = 2)
     private BigDecimal montantRemboursement;
 
@@ -192,6 +209,13 @@ public class Reservation {
         PAYE,
         REMBOURSE,
         ANNULE
+    }
+
+    public enum CancellationRequestStatus {
+        AUCUNE,
+        DEMANDEE,
+        REFUSEE,
+        ACCEPTEE
     }
 
     public enum ReservationSource {

@@ -1,9 +1,12 @@
 package com.luxtech.booking.controller;
 import com.luxtech.booking.dto.BookingDto;
+import com.luxtech.booking.client.HebergementApiResponse;
+import com.luxtech.booking.client.HebergementClient;
 import com.luxtech.booking.entity.Facture;
 import com.luxtech.booking.entity.Reservation;
 import com.luxtech.booking.entity.ReservationService;
 import com.luxtech.booking.service.BookingService;
+import com.luxtech.booking.exception.BookingException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
@@ -13,9 +16,130 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.util.List;
 
-@RestController @RequestMapping("/api/booking") @RequiredArgsConstructor
+@RestController
+@RequestMapping("/api/booking")
+@RequiredArgsConstructor
 public class BookingController {
     private final BookingService bookingService;
+    private final HebergementClient hebergementClient;
+
+    @GetMapping("/agency/reservations")
+    public ResponseEntity<BookingDto.ApiResponse<List<BookingDto.ReservationResponse>>> getAgencyReservations(
+            @RequestHeader("X-Agency-Id") String agencyId,
+            @RequestHeader("X-User-Role") String role) {
+        Long authenticatedAgencyId = authorizeAgency(agencyId, role);
+        List<BookingDto.ReservationResponse> list = bookingService.getByAgency(authenticatedAgencyId)
+                .stream().map(bookingService::toResponse).toList();
+        return ResponseEntity.ok(BookingDto.ApiResponse.ok("OK", list));
+    }
+
+    @GetMapping("/agency/factures")
+    public ResponseEntity<BookingDto.ApiResponse<List<BookingDto.FactureResponse>>> getAgencyFactures(
+            @RequestHeader("X-Agency-Id") String agencyId,
+            @RequestHeader("X-User-Role") String role) {
+        Long authenticatedAgencyId = authorizeAgency(agencyId, role);
+        List<BookingDto.FactureResponse> list = bookingService.getFacturesByAgency(authenticatedAgencyId)
+                .stream().map(bookingService::toFactureResponse).toList();
+        return ResponseEntity.ok(BookingDto.ApiResponse.ok("OK", list));
+    }
+
+    @GetMapping("/agency/factures/{factureId}/pdf")
+    public ResponseEntity<byte[]> downloadAgencyFacture(
+            @PathVariable Long factureId,
+            @RequestHeader("X-Agency-Id") String agencyId,
+            @RequestHeader("X-User-Role") String role) {
+        Long authenticatedAgencyId = authorizeAgency(agencyId, role);
+        Facture facture = bookingService.getFactureById(factureId);
+        if (!authenticatedAgencyId.equals(facture.getAgenceId())) {
+            throw new BookingException("Acces facture refuse.", 403);
+        }
+        byte[] pdf = bookingService.genererFacturePdf(facture);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + facture.getNumeroFacture() + ".pdf\"")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdf);
+    }
+
+    @PostMapping("/agency/reservations")
+    public ResponseEntity<BookingDto.ApiResponse<BookingDto.ReservationResponse>> createAgencyReservation(
+            @Valid @RequestBody BookingDto.PublicReservationRequest req,
+            @RequestHeader("X-Agency-Id") String agencyId,
+            @RequestHeader("X-User-Id") String userId,
+            @RequestHeader("X-User-Role") String role) {
+        Long authenticatedAgencyId = authorizeAgency(agencyId, role);
+        Reservation reservation = bookingService.creerReservationAgence(req, authenticatedAgencyId, Long.parseLong(userId));
+        return ResponseEntity.status(201).body(BookingDto.ApiResponse.ok(
+                "Demande de réservation agence créée.", bookingService.toResponse(reservation)));
+    }
+
+    @PostMapping("/agency/reservations/{reservationId}/demande-annulation")
+    public ResponseEntity<BookingDto.ApiResponse<BookingDto.ReservationResponse>> requestAgencyCancellation(
+            @PathVariable Long reservationId,
+            @RequestHeader("X-Agency-Id") String agencyId,
+            @RequestHeader("X-User-Role") String role,
+            @RequestHeader("X-User-Id") String userId,
+            @RequestBody(required = false) BookingDto.CancellationRequest request) {
+        Long authenticatedAgencyId = authorizeAgency(agencyId, role);
+        Reservation reservation = bookingService.demanderAnnulationAgence(
+                reservationId, authenticatedAgencyId, Long.parseLong(userId), request != null ? request.getMotif() : null);
+        return ResponseEntity.ok(BookingDto.ApiResponse.ok(
+                "Demande d'annulation envoyee a l'hebergement.", bookingService.toResponse(reservation)));
+    }
+
+    @PostMapping("/hotel/reservations/{reservationId}/annulation-decision")
+    public ResponseEntity<BookingDto.ApiResponse<BookingDto.ReservationResponse>> decideCancellation(
+            @PathVariable Long reservationId,
+            @RequestHeader(value = "X-Hotel-Id", required = false) String hotelId,
+            @RequestHeader("X-User-Id") String userId,
+            @RequestHeader("X-User-Role") String role,
+            @Valid @RequestBody BookingDto.CancellationDecisionRequest request) {
+        Reservation reservation = bookingService.getById(reservationId);
+        authorizeHotel(reservation, hotelId, userId, role);
+        if (reservation.getSource() != Reservation.ReservationSource.AGENCE) {
+            throw new BookingException("Cette reservation ne provient pas d'une agence.", 409);
+        }
+        Reservation updated = bookingService.deciderAnnulation(
+                reservationId, request.getAcceptee(), request.getMotifRefus());
+        return ResponseEntity.ok(BookingDto.ApiResponse.ok("Decision enregistree.", bookingService.toResponse(updated)));
+    }
+
+    private Long authorizeAgency(String agencyId, String role) {
+        if (!("AGENCY_ADMIN".equals(role) || "AGENCY_STAFF".equals(role))) {
+            throw new BookingException("Accès agence refusé.", 403);
+        }
+        try {
+            return Long.parseLong(agencyId);
+        } catch (NumberFormatException e) {
+            throw new BookingException("Agence non associée à cet utilisateur.", 403);
+        }
+    }
+
+    private void authorizeHotel(Reservation reservation, String authenticatedHotelId, String userId, String role) {
+        if ("SUPER_ADMIN".equals(role)) return;
+        if (!("HEBERGEMENT_ADMIN".equals(role) || "HEBERGEMENT_STAFF".equals(role))) {
+            throw new BookingException("Acces hebergement refuse.", 403);
+        }
+        if (authenticatedHotelId != null) {
+            try {
+                if (reservation.getHotelId().equals(Long.parseLong(authenticatedHotelId))) return;
+            } catch (NumberFormatException ignored) {
+                throw new BookingException("Hebergement non associe a cet utilisateur.", 403);
+            }
+        }
+        if ("HEBERGEMENT_ADMIN".equals(role)) {
+            try {
+                HebergementApiResponse response = hebergementClient.getById(reservation.getHotelId());
+                Long ownerUserId = response != null && response.isSuccess() && response.getData() != null
+                        ? response.getData().getUserId() : null;
+                if (ownerUserId != null && ownerUserId.equals(Long.parseLong(userId))) return;
+            } catch (NumberFormatException ignored) {
+                throw new BookingException("Compte utilisateur invalide.", 403);
+            } catch (Exception e) {
+                throw new BookingException("Impossible de verifier l'hebergement.", 503);
+            }
+        }
+        throw new BookingException("Reservation introuvable pour cet hebergement.", 404);
+    }
 
     @PostMapping("/reservations/create")
     public ResponseEntity<BookingDto.ApiResponse<BookingDto.ReservationResponse>> create(
@@ -49,8 +173,13 @@ public class BookingController {
     }
 
     @GetMapping("/reservations/agency/{agencyId}")
-    public ResponseEntity<BookingDto.ApiResponse<List<BookingDto.ReservationResponse>>> getByAgency(@PathVariable("agencyId") Long agencyId) {
-        List<BookingDto.ReservationResponse> list = bookingService.getByAgency(agencyId).stream().map(bookingService::toResponse).toList();
+    public ResponseEntity<BookingDto.ApiResponse<List<BookingDto.ReservationResponse>>> getByAgency(
+            @PathVariable("agencyId") Long agencyId,
+            @RequestHeader("X-Agency-Id") String authenticatedAgencyId,
+            @RequestHeader("X-User-Role") String role) {
+        Long scopedAgencyId = authorizeAgency(authenticatedAgencyId, role);
+        if (!agencyId.equals(scopedAgencyId)) throw new BookingException("Accès agence refusé.", 403);
+        List<BookingDto.ReservationResponse> list = bookingService.getByAgency(scopedAgencyId).stream().map(bookingService::toResponse).toList();
         return ResponseEntity.ok(BookingDto.ApiResponse.ok("OK", list));
     }
 

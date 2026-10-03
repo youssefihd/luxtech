@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import {
     Search, Filter, Eye, CheckCircle, XCircle, RefreshCw,
@@ -6,8 +6,8 @@ import {
     Hotel, Tent, Home, TreePine, Landmark, UtensilsCrossed,
     Train, Building, Map, Users, Star
 } from 'lucide-react'
-import axios from '../../api/axios'
 import { hebergementAxios } from '../../api/axios'
+import { hebergementAdminApi } from '../../api/hebergementAdminApi'
 
 const TYPE_CONFIG = {
     hotel:     { label: 'Hotels',               icon: Hotel,           color: '#1D2252' },
@@ -20,6 +20,30 @@ const TYPE_CONFIG = {
     pension:   { label: 'Pensions',             icon: UtensilsCrossed, color: '#5D2E8B' },
     relais:    { label: 'Relais',               icon: Train,           color: '#66CAD8' },
     residence: { label: 'Residences hotelières',icon: Building,        color: '#1D2252' },
+}
+
+const normalizeHebergementType = (value) => {
+    const key = String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '')
+    const aliases = {
+        hotels: 'hotel',
+        riads: 'riad',
+        maisondhote: 'maison',
+        maisondhotes: 'maison',
+        maisonsdhotes: 'maison',
+        gites: 'gite',
+        auberges: 'auberge',
+        campings: 'camping',
+        fermes: 'ferme',
+        pensions: 'pension',
+        residences: 'residence',
+        residencehoteliere: 'residence',
+        residenceshotelieres: 'residence',
+    }
+    return aliases[key] || key || 'hotel'
 }
 
 const STATUS_MAP = {
@@ -208,7 +232,7 @@ const DetailModal = ({ user, hebergementData, hebergementLoading, onClose, onAct
 
 export default function AdminHebergements() {
     const { type } = useParams()
-    const currentType = type || 'hotel'
+    const currentType = normalizeHebergementType(type || 'hotel')
     const config = TYPE_CONFIG[currentType] || TYPE_CONFIG.hotel
     const TypeIcon = config.icon
 
@@ -221,8 +245,6 @@ export default function AdminHebergements() {
     const [hebergementLoading, setHebergementLoading] = useState(false)
     const [actionLoading, setActionLoading] = useState(null)
     const [toast, setToast] = useState(null)
-
-    useEffect(() => { fetchUsers() }, [currentType])
 
     useEffect(() => {
         if (!selectedUser) { setHebergementData(null); return }
@@ -239,30 +261,41 @@ export default function AdminHebergements() {
         setTimeout(() => setToast(null), 3000)
     }
 
-    const fetchUsers = async () => {
+    const fetchUsers = useCallback(async (searchTerm = '', signal) => {
         setLoading(true)
         try {
-            const res = await axios.get('/auth/admin/users')
+            const res = await hebergementAdminApi.search(searchTerm, signal)
             const all = res.data?.data || []
             const filtered = all.filter(u =>
-                u.role === 'HEBERGEMENT_ADMIN' &&
-                (u.typeHebergement || 'hotel') === currentType
+                normalizeHebergementType(u.typeHebergement) === currentType
             )
             setUsers(filtered)
         } catch (err) {
-            console.error(err)
+            if (!signal?.aborted) console.error(err)
         } finally {
-            setLoading(false)
+            if (!signal?.aborted) setLoading(false)
         }
-    }
+    }, [currentType])
+
+    useEffect(() => {
+        const controller = new AbortController()
+        const timer = window.setTimeout(
+            () => fetchUsers(search, controller.signal),
+            search ? 300 : 0
+        )
+        return () => {
+            window.clearTimeout(timer)
+            controller.abort()
+        }
+    }, [currentType, search, fetchUsers])
 
     const handleAction = async (user, action) => {
         const id = user.id_utilisateur || user.id
         setActionLoading(id + action)
         try {
-            await axios.put(`/auth/admin/users/${id}/${action}`)
+            await hebergementAdminApi[action](id)
             setSelectedUser(null)
-            await fetchUsers()
+            await fetchUsers(search)
             showToast('Action effectuee avec succes !')
         } catch {
             showToast('Une erreur est survenue.', 'error')
@@ -272,14 +305,8 @@ export default function AdminHebergements() {
     }
 
     const filtered = users.filter(u => {
-        const q = search.toLowerCase()
-        const matchSearch = !search ||
-            `${u.prenom} ${u.nom}`.toLowerCase().includes(q) ||
-            u.email?.toLowerCase().includes(q) ||
-            u.nomEtablissement?.toLowerCase().includes(q) ||
-            u.ville?.toLowerCase().includes(q)
         const matchStatus = statusFilter === 'ALL' || u.status === statusFilter
-        return matchSearch && matchStatus
+        return matchStatus
     })
 
     const stats = {
@@ -320,7 +347,7 @@ export default function AdminHebergements() {
                         <p className="text-gray-500 text-sm">{stats.total} partenaire(s) enregistre(s)</p>
                     </div>
                 </div>
-                <button onClick={fetchUsers}
+                <button onClick={() => fetchUsers(search)}
                         className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:border-[#66CAD8] transition">
                     <RefreshCw size={15}/> Actualiser
                 </button>
