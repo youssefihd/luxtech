@@ -1,3 +1,4 @@
+com\luxtech\booking\dto\BookingDto$PaiementFactureRequest.class
 com\luxtech\booking\repository\ReservationRepository.class
 com\luxtech\booking\exception\BookingException.class
 com\luxtech\booking\dto\BookingDto$ApiResponse$ApiResponseBuilder.class

@@ -52,5 +52,5 @@ public class ReservationService {
 
     public enum StatutReservationService { EN_ATTENTE, CONFIRMEE, TERMINEE, ANNULEE }
     public enum StatutPaiementService { NON_PAYE, PARTIELLEMENT_PAYE, PAYE, FACTURE_CHAMBRE }
-    public enum MethodePaiementService { ESPECE, CARTE, VIREMENT }
+    public enum MethodePaiementService { ESPECE, CARTE, CHEQUE, VIREMENT }
 }

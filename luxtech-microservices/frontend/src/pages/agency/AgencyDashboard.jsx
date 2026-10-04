@@ -10,7 +10,7 @@ const StatCard = ({ icon: Icon, label, value, color }) => (
              style={{ background: color }}>
             <Icon size={20} />
         </div>
-        <div className="text-2xl font-bold text-gray-900">{value ?? 'â€”'}</div>
+        <div className="text-2xl font-bold text-gray-900">{value ?? '—'}</div>
         <div className="text-sm text-gray-500 mt-1">{label}</div>
     </div>
 )
@@ -40,10 +40,10 @@ export default function AgencyDashboard() {
     }
 
     const STATUS = {
-        CONFIRMEE:  { bg: 'bg-green-50', text: 'text-green-700', label: 'ConfirmÃ©e' },
+        CONFIRMEE:  { bg: 'bg-green-50', text: 'text-green-700', label: 'Confirmée' },
         EN_ATTENTE: { bg: 'bg-amber-50', text: 'text-amber-700', label: 'En attente' },
-        ANNULEE:    { bg: 'bg-red-50',   text: 'text-red-700',   label: 'AnnulÃ©e' },
-        TERMINEE:   { bg: 'bg-gray-50',  text: 'text-gray-700',  label: 'TerminÃ©e' },
+        ANNULEE:    { bg: 'bg-red-50',   text: 'text-red-700',   label: 'Annulée' },
+        TERMINEE:   { bg: 'bg-gray-50',  text: 'text-gray-700',  label: 'Terminée' },
     }
 
     return (
@@ -52,32 +52,32 @@ export default function AgencyDashboard() {
             {/* Welcome */}
             <div className="rounded-2xl p-6 text-white"
                  style={{ background: 'linear-gradient(135deg, #1D2252, #5D2E8B)' }}>
-                <h1 className="text-2xl font-bold mb-1">Bonjour, {user?.prenom} ðŸ‘‹</h1>
-                <p className="text-white/70">{agence?.nomAgence || 'Votre agence'} â€” Tableau de bord</p>
+                <h1 className="text-2xl font-bold mb-1">Bonjour, {user?.prenom} 👋</h1>
+                <p className="text-white/70">{agence?.nomAgence || 'Votre agence'} — Tableau de bord</p>
             </div>
 
             {/* Stats */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <StatCard icon={Calendar} label="RÃ©servations totales" value={reservations.length}
+                <StatCard icon={Calendar} label="Réservations totales" value={reservations.length}
                           color="linear-gradient(135deg, #66CAD8, #1D2252)" />
-                <StatCard icon={TrendingUp} label="RÃ©servations actives"
+                <StatCard icon={TrendingUp} label="Réservations actives"
                           value={reservations.filter(r => r.status === 'CONFIRMEE').length}
                           color="linear-gradient(135deg, #1D2252, #5D2E8B)" />
-                <StatCard icon={DollarSign} label="Commissions"
-                          value={agence?.commissionTaux ? `${agence.commissionTaux}%` : 'â€”'}
+                <StatCard icon={DollarSign} label="Marge agence"
+                          value={agence?.commissionTaux ? `${agence.commissionTaux}%` : '—'}
                           color="linear-gradient(135deg, #10b981, #059669)" />
-                <StatCard icon={Building2} label="Plafond crÃ©dit"
-                          value={agence?.plafondCredit ? `${agence.plafondCredit?.toLocaleString()} MAD` : 'â€”'}
+                <StatCard icon={Building2} label="Plafond de crédit"
+                          value={agence?.plafondCredit ? `${agence.plafondCredit?.toLocaleString()} MAD` : '—'}
                           color="linear-gradient(135deg, #f59e0b, #d97706)" />
             </div>
 
-            {/* RÃ©servations rÃ©centes */}
+            {/* Réservations récentes */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
                 <div className="p-5 border-b border-gray-100 flex items-center justify-between">
-                    <h2 className="font-bold text-gray-900">RÃ©servations rÃ©centes</h2>
+                    <h2 className="font-bold text-gray-900">Réservations récentes</h2>
                     <button onClick={() => navigate('/agence/reservations')}
                             className="text-sm font-medium hover:underline" style={{ color: '#66CAD8' }}>
-                        Voir tout â†’
+                        Voir tout →
                     </button>
                 </div>
 
@@ -86,11 +86,11 @@ export default function AgencyDashboard() {
                 ) : reservations.length === 0 ? (
                     <div className="p-8 text-center">
                         <Calendar size={36} className="mx-auto mb-3 text-gray-300" />
-                        <p className="text-gray-500">Aucune rÃ©servation pour le moment</p>
+                        <p className="text-gray-500">Aucune réservation pour le moment</p>
                         <button onClick={() => navigate('/agence/reservations')}
                                 className="mt-4 px-6 py-2 rounded-xl text-white text-sm font-medium"
                                 style={{ background: 'linear-gradient(135deg, #66CAD8, #5D2E8B)' }}>
-                            Faire une rÃ©servation
+                            Faire une réservation
                         </button>
                     </div>
                 ) : (
@@ -99,9 +99,9 @@ export default function AgencyDashboard() {
                             <thead>
                             <tr className="border-b border-gray-50">
                                 <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase">Client</th>
-                                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase">HÃ´tel</th>
-                                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase">ArrivÃ©e</th>
-                                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase">DÃ©part</th>
+                                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase">Hôtel</th>
+                                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase">Arrivée</th>
+                                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase">Départ</th>
                                 <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase">Statut</th>
                                 <th className="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase">Total</th>
                             </tr>
@@ -115,12 +115,12 @@ export default function AgencyDashboard() {
                                             <p className="font-medium text-sm text-gray-900">{r.clientNom} {r.clientPrenom}</p>
                                             <p className="text-xs text-gray-500">{r.clientEmail}</p>
                                         </td>
-                                        <td className="px-5 py-3 text-sm text-gray-600">{r.hotelNom || r.hotelId || 'â€”'}</td>
+                                        <td className="px-5 py-3 text-sm text-gray-600">{r.hotelNom || r.hotelId || '—'}</td>
                                         <td className="px-5 py-3 text-sm text-gray-600">
-                                            {r.dateArrivee ? new Date(r.dateArrivee).toLocaleDateString('fr-FR') : 'â€”'}
+                                            {r.dateArrivee ? new Date(r.dateArrivee).toLocaleDateString('fr-FR') : '—'}
                                         </td>
                                         <td className="px-5 py-3 text-sm text-gray-600">
-                                            {r.dateDepart ? new Date(r.dateDepart).toLocaleDateString('fr-FR') : 'â€”'}
+                                            {r.dateDepart ? new Date(r.dateDepart).toLocaleDateString('fr-FR') : '—'}
                                         </td>
                                         <td className="px-5 py-3">
                         <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${s.bg} ${s.text}`}>
@@ -128,7 +128,7 @@ export default function AgencyDashboard() {
                         </span>
                                         </td>
                                         <td className="px-5 py-3 text-right font-semibold text-sm" style={{ color: '#66CAD8' }}>
-                                            {r.prixTotal ? `${r.prixTotal?.toLocaleString()} MAD` : 'â€”'}
+                                            {r.prixTotal ? `${r.prixTotal?.toLocaleString()} MAD` : '—'}
                                         </td>
                                     </tr>
                                 )
@@ -142,8 +142,8 @@ export default function AgencyDashboard() {
             {/* Quick actions */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {[
-                    { label: 'Nouvelle rÃ©servation', icon: Calendar, path: '/agence/recherche' },
-                    { label: 'Voir les hÃ´tels', icon: Building2, path: '/agence/recherche' },
+                    { label: 'Nouvelle réservation', icon: Calendar, path: '/agence/recherche' },
+                    { label: 'Voir les hôtels', icon: Building2, path: '/agence/recherche' },
                     { label: 'Mon agence', icon: TrendingUp, path: '/agence/profil' },
                 ].map((a, i) => {
                     const Icon = a.icon

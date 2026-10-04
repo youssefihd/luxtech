@@ -113,7 +113,7 @@ export default function AgencyProfile() {
                         {field('Registre de commerce', 'rc')}
                     </div>
                     <p className="mt-5 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                        Commission contractuelle : {agence.commissionTaux ?? 0}% · Crédit : {agence.creditEnabled ? 'activé' : 'désactivé'}
+                        Marge agence : {agence.commissionTaux ?? 0}% · Crédit : {agence.creditEnabled ? 'activé' : 'désactivé'}
                         {agence.creditEnabled && ` · Plafond ${Number(agence.plafondCredit || 0).toLocaleString('fr-FR')} MAD`}
                     </p>
                 </div>

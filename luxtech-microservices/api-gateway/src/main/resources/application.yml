@@ -22,6 +22,11 @@ spring:
             allowedHeaders: "*"
             allowCredentials: true
       routes:
+        - id: hebergement-service-public
+          uri: lb://hebergement-service
+          order: -100
+          predicates:
+            - Path=/api/hebergement/public/**
         - id: auth-service
           uri: lb://auth-service
           predicates:
@@ -42,6 +47,12 @@ spring:
           uri: lb://booking-service
           predicates:
             - Path=/api/booking/hotel/**
+          filters:
+            - name: JwtAuthFilter
+        - id: booking-service-invoices
+          uri: lb://booking-service
+          predicates:
+            - Path=/api/booking/factures/**
           filters:
             - name: JwtAuthFilter
         - id: booking-service-public

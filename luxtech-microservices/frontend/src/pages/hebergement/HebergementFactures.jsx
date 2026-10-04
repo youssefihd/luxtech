@@ -76,9 +76,11 @@ const KPICard = ({ title, value, icon: Icon, color, bg, active, onClick }) => (
 
 const MarkPaidModal = ({ isOpen, facture, onConfirm, onClose }) => {
     const [processing, setProcessing] = useState(false)
+    const [methode, setMethode] = useState('')
     const handleConfirm = async () => {
+        if (!methode) return
         setProcessing(true)
-        try { await onConfirm(facture.id) }
+        try { await onConfirm(facture.id, methode) }
         finally { setProcessing(false) }
     }
     if (!isOpen || !facture) return null
@@ -93,12 +95,22 @@ const MarkPaidModal = ({ isOpen, facture, onConfirm, onClose }) => {
                     <p className="text-sm text-gray-500 mt-1">Facture <span className="font-bold">{facture.numeroFacture}</span></p>
                     <p className="text-sm text-gray-500 mt-0.5">Montant : <span className="font-black text-gray-900">{fmt(facture.montantTotal)}</span></p>
                 </div>
+                <label className="block text-left text-xs font-bold text-gray-600 mb-5">
+                    Mode de paiement *
+                    <select value={methode} onChange={event => setMethode(event.target.value)} required className="mt-1.5 w-full rounded-xl border-2 border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#66CAD8]">
+                        <option value="">Choisir un mode</option>
+                        <option value="ESPECE">Espèces</option>
+                        <option value="CARTE">Carte</option>
+                        <option value="CHEQUE">Chèque</option>
+                        <option value="VIREMENT">Virement</option>
+                    </select>
+                </label>
                 <div className="flex gap-3">
                     <button onClick={onClose} disabled={processing}
                             className="flex-1 py-3 rounded-2xl border-2 border-gray-200 text-gray-700 font-bold text-sm hover:bg-gray-50 transition">
                         Annuler
                     </button>
-                    <button onClick={handleConfirm} disabled={processing}
+                    <button onClick={handleConfirm} disabled={processing || !methode}
                             className="flex-1 py-3 rounded-2xl text-white font-black text-sm transition disabled:opacity-50"
                             style={{ background: 'linear-gradient(135deg, #059669, #047857)' }}>
                         {processing ? <RefreshCw size={15} className="animate-spin mx-auto"/> : 'Confirmer'}
@@ -203,9 +215,9 @@ export default function HebergementFactures() {
     const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE))
     const paginated  = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
 
-    const handleMarkPaid = async (factureId) => {
+    const handleMarkPaid = async (factureId, methode) => {
         try {
-            await bookingAxios.patch(`/booking/factures/${factureId}/statut`, null, { params: { statut: 'PAYEE' } })
+            await bookingAxios.post(`/booking/factures/${factureId}/paiement`, { methode })
             await fetchData(true)
             setMarkPaidModal({ open: false, facture: null })
             showToast('Facture marquée comme payée !')

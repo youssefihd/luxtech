@@ -21,7 +21,7 @@ public class AgenceController {
 
     @GetMapping("/{agenceId}/clients")
     public ResponseEntity<AgenceDto.ApiResponse<List<AgenceDto.ClientResponse>>> clients(
-            @PathVariable Long agenceId,
+            @PathVariable("agenceId") Long agenceId,
             @RequestHeader("X-Agency-Id") String authenticatedAgencyId,
             @RequestHeader("X-User-Role") String role) {
         authorizeAgency(agenceId, authenticatedAgencyId, role);
@@ -30,7 +30,7 @@ public class AgenceController {
 
     @PostMapping("/{agenceId}/clients")
     public ResponseEntity<AgenceDto.ApiResponse<AgenceDto.ClientResponse>> createClient(
-            @PathVariable Long agenceId,
+            @PathVariable("agenceId") Long agenceId,
             @RequestHeader("X-Agency-Id") String authenticatedAgencyId,
             @RequestHeader("X-User-Role") String role,
             @Valid @RequestBody AgenceDto.ClientRequest request) {
@@ -40,7 +40,7 @@ public class AgenceController {
 
     @PutMapping("/{agenceId}/clients/{clientId}")
     public ResponseEntity<AgenceDto.ApiResponse<AgenceDto.ClientResponse>> updateClient(
-            @PathVariable Long agenceId, @PathVariable Long clientId,
+            @PathVariable("agenceId") Long agenceId, @PathVariable("clientId") Long clientId,
             @RequestHeader("X-Agency-Id") String authenticatedAgencyId,
             @RequestHeader("X-User-Role") String role,
             @Valid @RequestBody AgenceDto.ClientRequest request) {
@@ -50,7 +50,7 @@ public class AgenceController {
 
     @DeleteMapping("/{agenceId}/clients/{clientId}")
     public ResponseEntity<AgenceDto.ApiResponse<Void>> deleteClient(
-            @PathVariable Long agenceId, @PathVariable Long clientId,
+            @PathVariable("agenceId") Long agenceId, @PathVariable("clientId") Long clientId,
             @RequestHeader("X-Agency-Id") String authenticatedAgencyId,
             @RequestHeader("X-User-Role") String role) {
         authorizeAgency(agenceId, authenticatedAgencyId, role);
@@ -77,7 +77,7 @@ public class AgenceController {
 
     @GetMapping("/{id}")
     public ResponseEntity<AgenceDto.ApiResponse<AgenceDto.AgenceResponse>> getById(
-            @PathVariable Long id,
+            @PathVariable("id") Long id,
             @RequestHeader(value = "X-Agency-Id", required = false) String agencyId,
             @RequestHeader("X-User-Role") String role) {
         authorizeAgencyOrAdmin(id, agencyId, role);
@@ -101,7 +101,7 @@ public class AgenceController {
 
     @PutMapping("/{id}")
     public ResponseEntity<AgenceDto.ApiResponse<AgenceDto.AgenceResponse>> update(
-            @PathVariable Long id, @RequestBody AgenceDto.CreateAgenceRequest request,
+            @PathVariable("id") Long id, @RequestBody AgenceDto.CreateAgenceRequest request,
             @RequestHeader(value = "X-Agency-Id", required = false) String agencyId,
             @RequestHeader("X-User-Role") String role) {
         if ("SUPER_ADMIN".equals(role)) {
@@ -114,7 +114,7 @@ public class AgenceController {
 
     @PutMapping("/{id}/commercial-settings")
     public ResponseEntity<AgenceDto.ApiResponse<AgenceDto.AgenceResponse>> configureCommercial(
-            @PathVariable Long id, @Valid @RequestBody AgenceDto.AgencyCommercialSettingsRequest request,
+            @PathVariable("id") Long id, @Valid @RequestBody AgenceDto.AgencyCommercialSettingsRequest request,
             @RequestHeader("X-User-Role") String role) {
         requireSuperAdmin(role);
         return ResponseEntity.ok(AgenceDto.ApiResponse.ok("Configuration commerciale mise a jour.",
@@ -123,21 +123,21 @@ public class AgenceController {
 
     @PostMapping("/{id}/approuver")
     public ResponseEntity<AgenceDto.ApiResponse<AgenceDto.AgenceResponse>> approuver(
-            @PathVariable Long id, @RequestHeader("X-User-Role") String role) {
+            @PathVariable("id") Long id, @RequestHeader("X-User-Role") String role) {
         requireSuperAdmin(role);
         return ResponseEntity.ok(AgenceDto.ApiResponse.ok("Agence approuvee.", agenceService.toResponse(agenceService.approuver(id))));
     }
 
     @PostMapping("/{id}/rejeter")
     public ResponseEntity<AgenceDto.ApiResponse<AgenceDto.AgenceResponse>> rejeter(
-            @PathVariable Long id, @RequestHeader("X-User-Role") String role) {
+            @PathVariable("id") Long id, @RequestHeader("X-User-Role") String role) {
         requireSuperAdmin(role);
         return ResponseEntity.ok(AgenceDto.ApiResponse.ok("Agence rejetee.", agenceService.toResponse(agenceService.rejeter(id))));
     }
 
     @PostMapping("/{id}/suspendre")
     public ResponseEntity<AgenceDto.ApiResponse<AgenceDto.AgenceResponse>> suspendre(
-            @PathVariable Long id, @RequestHeader("X-User-Role") String role) {
+            @PathVariable("id") Long id, @RequestHeader("X-User-Role") String role) {
         requireSuperAdmin(role);
         return ResponseEntity.ok(AgenceDto.ApiResponse.ok("Agence suspendue.", agenceService.toResponse(agenceService.suspendre(id))));
     }

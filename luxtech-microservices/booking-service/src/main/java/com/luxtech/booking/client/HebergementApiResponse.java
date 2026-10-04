@@ -26,5 +26,6 @@ public class HebergementApiResponse {
         private String cnss;
         private String ice;
         private Long userId;
+        private java.math.BigDecimal commissionTaux;
     }
 }

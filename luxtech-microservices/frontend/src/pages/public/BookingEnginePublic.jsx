@@ -6,7 +6,7 @@ import {
     Coffee, Waves, Dumbbell, UtensilsCrossed, ChevronLeft, ChevronRight,
     Sparkles, ShieldCheck, Clock3, Loader, Plus, Minus, ArrowRight,
 } from 'lucide-react'
-import { hebergementAxios, bookingAxios } from '../../api/axios.js'
+import { bookingAxios } from '../../api/axios.js'
 
 const NAVY = '#1D2252', CYAN = '#66CAD8', PURPLE = '#5D2E8B'
 const DEFAULT_CONFIG = {
@@ -129,7 +129,7 @@ const BookingModal = ({ isOpen, type, hebergement, dateArrivee, dateDepart, nbNu
                     <div><label className="block text-xs font-bold text-gray-500 mb-1.5">Demandes spéciales</label><textarea rows={2} {...F('notes')} placeholder="Optionnel..." className={ic}/></div>
                     <div className="rounded-2xl p-4 flex justify-between items-center" style={{ background: `${config.secondaryColor}15`, border: `1.5px solid ${config.secondaryColor}40` }}>
                         <span className="text-sm font-medium text-gray-600">Total estimé</span>
-                        <span className="text-xl font-black" style={{ color: config.primaryColor }}>{fmt(type.prixBase * nbNuits)}</span>
+                        <span className="text-xl font-black" style={{ color: config.primaryColor }}>{fmt((type.prixAvecMarkup || type.prixBase) * nbNuits)}</span>
                     </div>
                     <p className="text-[11px] text-gray-400 text-center flex items-center justify-center gap-1.5"><ShieldCheck size={13}/> Votre demande sera confirmée par l'établissement sous peu.</p>
                 </div>
@@ -408,7 +408,7 @@ const RoomTypeCard = ({ type, config, onReserve }) => {
                 )}
                 <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-50">
                     <div>
-                        <p className="text-xl font-black" style={{ color: config.primaryColor }}>{fmt(type.prixBase)}</p>
+                        <p className="text-xl font-black" style={{ color: config.primaryColor }}>{fmt(type.prixAvecMarkup || type.prixBase)}</p>
                         <p className="text-[10px] text-gray-400">par nuit</p>
                     </div>
                     <button onClick={onReserve} className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-white text-xs font-black transition hover:shadow-lg"
@@ -442,7 +442,7 @@ export default function BookingEnginePublic() {
     const [contactSent, setContactSent] = useState(false)
 
     useEffect(() => {
-        hebergementAxios.get(`/hebergement/public/${slug}`)
+        bookingAxios.get(`/hebergement/public/${slug}`)
             .then(res => setHebergement(res.data?.data))
             .catch(() => setNotFound(true))
             .finally(() => setLoading(false))

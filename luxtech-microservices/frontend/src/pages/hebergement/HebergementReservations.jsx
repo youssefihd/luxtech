@@ -237,10 +237,11 @@ const ExtendModal = ({ isOpen, reservation, onClose, onConfirm }) => {
 
 const PaymentModal = ({ isOpen, reservation, onSubmit, onClose }) => {
     const [amount, setAmount] = useState('')
+    const [methode, setMethode] = useState('')
     const [processing, setProcessing] = useState(false)
     const [error, setError] = useState('')
     const isConfirm = reservation?.status === 'EN_ATTENTE'
-    useEffect(() => { if (isOpen) { setAmount(''); setError('') } }, [isOpen])
+    useEffect(() => { if (isOpen) { setAmount(''); setMethode(''); setError('') } }, [isOpen])
     const montantRestant = reservation
         ? Math.max(0, Number(reservation.prixTotal || 0) - Number(reservation.montantPaye || 0))
         : 0
@@ -248,8 +249,9 @@ const PaymentModal = ({ isOpen, reservation, onSubmit, onClose }) => {
         const montant = parseFloat(amount) || 0
         if (!isConfirm && montant <= 0) { setError('Montant invalide'); return }
         if (montant > montantRestant + 0.01) { setError(`Maximum: ${fmt(montantRestant)}`); return }
+        if (montant > 0 && !methode) { setError('Veuillez choisir une méthode de paiement'); return }
         setProcessing(true)
-        try { await onSubmit(reservation.id, montant, isConfirm) }
+        try { await onSubmit(reservation.id, montant, isConfirm, methode) }
         catch (err) { setError(err.message || 'Erreur lors du traitement') }
         finally { setProcessing(false) }
     }
@@ -318,6 +320,14 @@ const PaymentModal = ({ isOpen, reservation, onSubmit, onClose }) => {
                         </p>
                     )}
                 </div>
+                {(Number(amount) || 0) > 0 && <div className="mb-6">
+                    <label className="block text-sm font-bold text-gray-700 mb-2">Méthode de paiement *</label>
+                    <select value={methode} onChange={e => setMethode(e.target.value)} disabled={processing}
+                            className="w-full px-4 py-3.5 border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-[#66CAD8] text-sm font-semibold">
+                        <option value="">Choisir…</option><option value="ESPECE">Espèces</option>
+                        <option value="CARTE">Carte</option><option value="CHEQUE">Chèque</option><option value="VIREMENT">Virement</option>
+                    </select>
+                </div>}
                 <div className="flex gap-3">
                     <button onClick={onClose} disabled={processing}
                             className="flex-1 py-3.5 rounded-2xl border-2 border-gray-200 text-gray-700 font-bold text-sm hover:bg-gray-50 transition">
@@ -385,6 +395,7 @@ const ServicePaymentModal = ({ isOpen, rs, onConfirm, onFacturerChambre, onClose
                         <select value={methode} onChange={e => setMethode(e.target.value)} className={ic}>
                             <option value="ESPECE">Espèce</option>
                             <option value="CARTE">Carte</option>
+                            <option value="CHEQUE">Chèque</option>
                             <option value="VIREMENT">Virement</option>
                         </select>
                     </div>
@@ -817,7 +828,7 @@ const ReservationModal = ({ isOpen, chambres, services, reservations, onSubmit, 
         clientNom: '', clientPrenom: '', clientEmail: '', clientTelephone: '',
         clientNationalite: '', clientCinPasseport: '',
         clientPays: 'Maroc', chambreId: '', dateArrivee: '', dateDepart: '',
-        nombrePersonnes: 1, notes: '', source: 'interne', montantTotal: '', avance: '',
+        nombrePersonnes: 1, notes: '', source: 'interne', montantTotal: '', avance: '', methodePaiement: '',
         selectedServices: []
     })
     const [processing, setProcessing] = useState(false)
@@ -860,7 +871,7 @@ const ReservationModal = ({ isOpen, chambres, services, reservations, onSubmit, 
             setForm({ clientNom: '', clientPrenom: '', clientEmail: '', clientTelephone: '',
                 clientNationalite: '', clientCinPasseport: '',
                 clientPays: 'Maroc', chambreId: '', dateArrivee: '', dateDepart: '',
-                nombrePersonnes: 1, notes: '', source: 'interne', montantTotal: '', avance: '',
+                nombrePersonnes: 1, notes: '', source: 'interne', montantTotal: '', avance: '', methodePaiement: '',
                 selectedServices: [] })
         }
     }, [isOpen])
@@ -893,6 +904,7 @@ const ReservationModal = ({ isOpen, chambres, services, reservations, onSubmit, 
             if (nbJours <= 0) { setError('La date de départ doit être après la date d\'arrivée'); return false }
             if (!form.chambreId) { setError('Veuillez sélectionner une chambre'); return false }
         }
+        if (step === 2 && Number(form.avance) > 0 && !form.methodePaiement) { setError('Veuillez choisir la méthode de paiement de l’avance'); return false }
         setError(''); return true
     }
     const handleNext = () => { if (validateStep()) setStep(s => Math.min(4, s + 1)) }
@@ -1016,6 +1028,11 @@ const ReservationModal = ({ isOpen, chambres, services, reservations, onSubmit, 
                                 </div>
                                 <div><label className="block text-xs font-bold text-gray-600 mb-1.5">Avance / Acompte (MAD)</label>
                                     <input type="number" min="0" {...F('avance')} placeholder="0.00" className={inputCls}/></div>
+                                {Number(form.avance) > 0 && <div><label className="block text-xs font-bold text-gray-600 mb-1.5">Méthode de paiement *</label>
+                                    <select {...F('methodePaiement')} className={inputCls}>
+                                        <option value="">Choisir…</option><option value="ESPECE">Espèces</option><option value="CARTE">Carte</option>
+                                        <option value="CHEQUE">Chèque</option><option value="VIREMENT">Virement</option>
+                                    </select></div>}
                             </div>
                             <div><label className="block text-xs font-bold text-gray-600 mb-1.5">Notes internes</label>
                                 <textarea rows={2} {...F('notes')} placeholder="Demandes spéciales..." className={inputCls}/></div>
@@ -1344,9 +1361,9 @@ export default function HebergementReservations() {
         } catch (err) { showToast(err.response?.data?.message || 'Erreur.', 'error') }
     }
 
-    const handlePayment = async (id, montant, isConfirm) => {
+    const handlePayment = async (id, montant, isConfirm, methode) => {
         try {
-            if (montant > 0) await bookingAxios.post(`/booking/reservations/${id}/paiement`, { montant })
+            if (montant > 0) await bookingAxios.post(`/booking/reservations/${id}/paiement`, { montant, methode })
             if (isConfirm) await bookingAxios.post(`/booking/reservations/${id}/confirmer`)
             await fetchData(true)
             setPaymentModal({ open: false, reservation: null })
@@ -1387,7 +1404,7 @@ export default function HebergementReservations() {
             const reservationId = res?.data?.data?.id
 
             if (reservationId && Number(form.avance) > 0) {
-                await bookingAxios.post(`/booking/reservations/${reservationId}/paiement`, { montant: Number(form.avance) })
+                await bookingAxios.post(`/booking/reservations/${reservationId}/paiement`, { montant: Number(form.avance), methode: form.methodePaiement })
             }
 
             let serviceErrors = 0

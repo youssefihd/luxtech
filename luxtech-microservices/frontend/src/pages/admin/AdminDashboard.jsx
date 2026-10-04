@@ -309,7 +309,7 @@ export default function AdminDashboard() {
             setPendingUsers(pending)
 
             const approved = all.filter(u => u.status === 'APPROVED')
-            const hebergements = approved.filter(u => u.role === 'HEBERGEMENT_ADMIN')
+            const hebergements = approved.filter(u => u.role === 'HEBERGEMENT_ADMIN'|| user?.role === 'CLIENT')
             const agences = approved.filter(u => u.role === 'AGENCY_ADMIN')
 
             const byType = {}

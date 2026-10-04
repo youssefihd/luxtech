@@ -1,5 +1,6 @@
 import axios from 'axios'
 
+const GATEWAY_API_URL = import.meta.env.VITE_API_BASE_URL || '/api'
 
 const createServiceClient = (baseURL) => {
     const client = axios.create({
@@ -72,17 +73,17 @@ const createServiceClient = (baseURL) => {
 }
 
 export const agencyAxios =
-    createServiceClient('http://localhost:8080/api')
+    createServiceClient(GATEWAY_API_URL)
 
 export const publicApiAxios =
-    createServiceClient('http://localhost:8080/api')
+    createServiceClient(GATEWAY_API_URL)
 
 export const notificationAxios =
-    createServiceClient('http://localhost:8080/api')
+    createServiceClient(GATEWAY_API_URL)
 
 // ── Instance Auth Service (port 8081) ─────────────────────
 const instance = axios.create({
-    baseURL: 'http://localhost:8081/api',
+    baseURL: GATEWAY_API_URL,
     headers: { 'Content-Type': 'application/json' },
 })
 
@@ -151,7 +152,7 @@ hebergementAxios.interceptors.response.use(
 
 export const bookingAxios = axios.create({
     // Route booking calls through the gateway for shared CORS and JWT handling.
-    baseURL: 'http://localhost:8080/api',
+    baseURL: GATEWAY_API_URL,
     headers: {
         'Content-Type': 'application/json',
     },

@@ -60,6 +60,21 @@ public class BookingController {
                 .body(pdf);
     }
 
+    @PostMapping("/agency/factures/{factureId}/paiement")
+    public ResponseEntity<BookingDto.ApiResponse<BookingDto.FactureResponse>> payAgencyFacture(
+            @PathVariable Long factureId,
+            @RequestHeader("X-Agency-Id") String agencyId,
+            @RequestHeader("X-User-Role") String role,
+            @Valid @RequestBody BookingDto.PaiementFactureRequest request) {
+        Long authenticatedAgencyId = authorizeAgency(agencyId, role);
+        Facture facture = bookingService.getFactureById(factureId);
+        if (!authenticatedAgencyId.equals(facture.getAgenceId())) {
+            throw new BookingException("Acces facture refuse.", 403);
+        }
+        Facture updated = bookingService.enregistrerPaiementFacture(factureId, request.getMethode());
+        return ResponseEntity.ok(BookingDto.ApiResponse.ok("Paiement enregistre.", bookingService.toFactureResponse(updated)));
+    }
+
     @PostMapping("/agency/reservations")
     public ResponseEntity<BookingDto.ApiResponse<BookingDto.ReservationResponse>> createAgencyReservation(
             @Valid @RequestBody BookingDto.PublicReservationRequest req,
@@ -111,6 +126,20 @@ public class BookingController {
             return Long.parseLong(agencyId);
         } catch (NumberFormatException e) {
             throw new BookingException("Agence non associée à cet utilisateur.", 403);
+        }
+    }
+
+    private void authorizeHotelInvoice(Facture facture, String hotelId, String role) {
+        if ("SUPER_ADMIN".equals(role)) return;
+        if (!("HEBERGEMENT_ADMIN".equals(role) || "HEBERGEMENT_STAFF".equals(role)) || hotelId == null) {
+            throw new BookingException("Acces facture refuse.", 403);
+        }
+        try {
+            if (!facture.getHotelId().equals(Long.parseLong(hotelId))) {
+                throw new BookingException("Acces facture refuse.", 403);
+            }
+        } catch (NumberFormatException e) {
+            throw new BookingException("Hebergement non associe a cet utilisateur.", 403);
         }
     }
 
@@ -250,9 +279,26 @@ public class BookingController {
 
     @PatchMapping("/factures/{id}/statut")
     public ResponseEntity<BookingDto.ApiResponse<BookingDto.FactureResponse>> updateFactureStatut(
-            @PathVariable("id") Long id, @RequestParam Facture.StatutFacture statut) {
-        Facture f = bookingService.updateFactureStatut(id, statut);
+            @PathVariable("id") Long id, @RequestParam Facture.StatutFacture statut,
+            @RequestParam(required = false) Facture.MethodePaiement methode,
+            @RequestHeader(value = "X-Hotel-Id", required = false) String hotelId,
+            @RequestHeader("X-User-Role") String role) {
+        authorizeHotelInvoice(bookingService.getFactureById(id), hotelId, role);
+        Facture f = statut == Facture.StatutFacture.PAYEE
+                ? bookingService.enregistrerPaiementFacture(id, methode)
+                : bookingService.updateFactureStatut(id, statut);
         return ResponseEntity.ok(BookingDto.ApiResponse.ok("Statut mis à jour.", bookingService.toFactureResponse(f)));
+    }
+
+    @PostMapping("/factures/{id}/paiement")
+    public ResponseEntity<BookingDto.ApiResponse<BookingDto.FactureResponse>> payHotelFacture(
+            @PathVariable Long id,
+            @RequestHeader(value = "X-Hotel-Id", required = false) String hotelId,
+            @RequestHeader("X-User-Role") String role,
+            @Valid @RequestBody BookingDto.PaiementFactureRequest request) {
+        authorizeHotelInvoice(bookingService.getFactureById(id), hotelId, role);
+        Facture updated = bookingService.enregistrerPaiementFacture(id, request.getMethode());
+        return ResponseEntity.ok(BookingDto.ApiResponse.ok("Paiement enregistre.", bookingService.toFactureResponse(updated)));
     }
 
     @GetMapping("/factures/{id}/pdf")

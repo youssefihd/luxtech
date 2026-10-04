@@ -278,7 +278,7 @@ public class HebergementController {
 
     @GetMapping("/public/{slug}")
     public ResponseEntity<HebergementDto.ApiResponse<HebergementDto.HebergementResponse>> getPublicBySlug(
-            @PathVariable String slug) {
+            @PathVariable("slug") String slug) {
         Hebergement h = hebergementService.getPublicBySlug(slug);
         return ResponseEntity.ok(HebergementDto.ApiResponse.ok("OK", hebergementService.toResponse(h)));
     }

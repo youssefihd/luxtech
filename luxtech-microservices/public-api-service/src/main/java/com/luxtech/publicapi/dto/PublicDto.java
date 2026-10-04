@@ -13,7 +13,7 @@ import java.time.LocalDate;
 
 public class PublicDto {
 
-    @Data
+    @Getter @Setter
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor

@@ -43,7 +43,10 @@ public class BookingDto {
         LocalDate dateArrivee; LocalDate dateDepart; Integer nbNuits;
         Integer nbAdultes; Integer nbEnfants;
         BigDecimal prixChambreNuit; BigDecimal prixHt; BigDecimal prixTotal;
-        BigDecimal montantTva; BigDecimal montantCommission; BigDecimal montantReverse;
+        BigDecimal montantTva;
+        BigDecimal tauxCommission; BigDecimal montantCommission;
+        BigDecimal tauxMargeAgence; BigDecimal montantMargeAgence;
+        BigDecimal montantReverse;
         BigDecimal montantPaye;
         Reservation.ReservationStatus status; Reservation.PaymentStatus paymentStatus;
         Reservation.ReservationSource source;
@@ -69,6 +72,11 @@ public class BookingDto {
     public static class PaiementRequest {
         @NotNull BigDecimal montant;
         Facture.MethodePaiement methode;
+    }
+
+    @Data @NoArgsConstructor @AllArgsConstructor
+    public static class PaiementFactureRequest {
+        @NotNull Facture.MethodePaiement methode;
     }
 
     @Data @Builder @NoArgsConstructor @AllArgsConstructor
@@ -122,6 +130,8 @@ public class BookingDto {
         String description;
         String imagesUrls;
         BigDecimal prixBase;
+        BigDecimal tauxMarkup;
+        BigDecimal prixAvecMarkup;
         Integer nbDisponibles;
         Integer capaciteAdultes;
         Integer capaciteEnfants;

@@ -106,6 +106,14 @@ public class Reservation {
     @Builder.Default
     private BigDecimal tauxCommission = new BigDecimal("10.00");
 
+    @Column(name = "taux_marge_agence", precision = 5, scale = 2)
+    @Builder.Default
+    private BigDecimal tauxMargeAgence = BigDecimal.ZERO;
+
+    @Column(name = "montant_marge_agence", precision = 12, scale = 2)
+    @Builder.Default
+    private BigDecimal montantMargeAgence = BigDecimal.ZERO;
+
     @Column(name = "montant_reverse", precision = 12, scale = 2)
     @Builder.Default
     private BigDecimal montantReverse = BigDecimal.ZERO;

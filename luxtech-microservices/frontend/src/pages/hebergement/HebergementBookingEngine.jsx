@@ -105,6 +105,17 @@ export default function HebergementBookingEngine() {
     useEffect(() => { fetchData() }, [fetchData])
 
     const publicUrl = hebergement?.slug ? `${window.location.origin}/reserver/${hebergement.slug}` : null
+    const publicPageAvailable = Boolean(publicUrl
+        && hebergement?.isActive
+        && hebergement?.status === 'APPROVED'
+        && hebergement?.bookingEngineActif)
+    const publicPageUnavailableReason = !hebergement?.isActive
+        ? 'L’établissement est désactivé. Réactivez-le pour publier la page.'
+        : hebergement?.status !== 'APPROVED'
+            ? 'L’établissement doit être approuvé par un administrateur avant sa publication.'
+            : !hebergement?.bookingEngineActif
+                ? 'Activez le Booking Engine pour publier cette page.'
+                : ''
 
     const setField = (field, value) => setConfig(p => ({ ...p, [field]: value }))
 
@@ -152,7 +163,7 @@ export default function HebergementBookingEngine() {
     }
 
     const handleCopyLink = () => {
-        if (!publicUrl) return
+        if (!publicPageAvailable) return
         navigator.clipboard.writeText(publicUrl)
         showToast('Lien copié !')
     }
@@ -195,7 +206,7 @@ export default function HebergementBookingEngine() {
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
-                        {publicUrl && hebergement?.bookingEngineActif && (
+                        {publicPageAvailable && (
                             <a href={publicUrl} target="_blank" rel="noreferrer"
                                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/15 text-white text-sm font-semibold hover:bg-white/25 transition border border-white/20">
                                 <Eye size={15}/> Aperçu
@@ -242,7 +253,11 @@ export default function HebergementBookingEngine() {
                                 {hebergement?.bookingEngineActif ? 'Booking Engine actif' : 'Booking Engine désactivé'}
                             </p>
                             <p className="text-sm text-gray-400">
-                                {hebergement?.bookingEngineActif ? 'Les clients peuvent réserver directement en ligne' : 'Votre page est actuellement masquée'}
+                                {publicPageAvailable
+                                    ? 'Les clients peuvent réserver directement en ligne'
+                                    : hebergement?.bookingEngineActif
+                                        ? 'Le moteur est activé, mais la page n’est pas encore publiée.'
+                                        : 'Votre page est actuellement masquée'}
                             </p>
                         </div>
                     </div>
@@ -259,9 +274,12 @@ export default function HebergementBookingEngine() {
                     <p className="text-xs font-black uppercase tracking-widest text-gray-400 mb-3">Lien public</p>
                     <div className="flex items-center gap-2">
                         <div className="flex-1 px-4 py-3 rounded-xl bg-gray-50 border border-gray-100 text-sm font-mono text-gray-600 truncate">{publicUrl}</div>
-                        <button onClick={handleCopyLink} className="p-3 rounded-xl border-2 border-gray-200 text-gray-500 hover:border-[#66CAD8] hover:text-[#1D2252] transition shrink-0"><Copy size={16}/></button>
-                        <a href={publicUrl} target="_blank" rel="noreferrer" className="p-3 rounded-xl text-white transition hover:shadow-lg shrink-0" style={{ background: `linear-gradient(135deg, ${CYAN}, ${NAVY})` }}><ExternalLink size={16}/></a>
+                        <button onClick={handleCopyLink} disabled={!publicPageAvailable} title={publicPageAvailable ? 'Copier le lien public' : publicPageUnavailableReason} className="p-3 rounded-xl border-2 border-gray-200 text-gray-500 hover:border-[#66CAD8] hover:text-[#1D2252] transition shrink-0 disabled:cursor-not-allowed disabled:opacity-40"><Copy size={16}/></button>
+                        {publicPageAvailable
+                            ? <a href={publicUrl} target="_blank" rel="noreferrer" aria-label="Ouvrir la page publique" className="p-3 rounded-xl text-white transition hover:shadow-lg shrink-0" style={{ background: `linear-gradient(135deg, ${CYAN}, ${NAVY})` }}><ExternalLink size={16}/></a>
+                            : <button type="button" disabled title={publicPageUnavailableReason} aria-label={publicPageUnavailableReason} className="p-3 rounded-xl text-white shrink-0 opacity-40 cursor-not-allowed" style={{ background: `linear-gradient(135deg, ${CYAN}, ${NAVY})` }}><ExternalLink size={16}/></button>}
                     </div>
+                    {!publicPageAvailable && <p role="status" className="mt-3 text-sm text-amber-700">{publicPageUnavailableReason}</p>}
                 </div>
             )}
 

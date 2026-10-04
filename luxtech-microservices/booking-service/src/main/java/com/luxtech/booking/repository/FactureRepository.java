@@ -10,6 +10,7 @@ import java.util.Optional;
 @Repository
 public interface FactureRepository extends JpaRepository<Facture, Long> {
     List<Facture> findByReservationId(Long reservationId);
+    List<Facture> findByReservationServiceId(Long reservationServiceId);
     List<Facture> findByHotelId(Long hotelId);
     List<Facture> findByAgenceId(Long agenceId);
     Optional<Facture> findByNumeroFacture(String numero);

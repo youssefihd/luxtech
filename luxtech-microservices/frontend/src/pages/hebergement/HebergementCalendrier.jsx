@@ -466,7 +466,7 @@ const ReservationModal = ({ isOpen, onClose, dateRange, chambres, onSubmit }) =>
     const [form, setForm] = useState({
         clientNom:'', clientPrenom:'', clientEmail:'', clientTelephone:'',
         clientPays:'Maroc', chambreId:'', nombrePersonnes:1,
-        notes:'', source:'interne', montantTotal:'', avance:''
+        notes:'', source:'interne', montantTotal:'', avance:'', methodePaiement:''
     })
     const [processing, setProcessing] = useState(false)
     const [error, setError] = useState('')
@@ -487,6 +487,7 @@ const ReservationModal = ({ isOpen, onClose, dateRange, chambres, onSubmit }) =>
         if(!form.clientNom.trim()){setError('Le nom du client est obligatoire');return}
         if(!form.clientEmail.trim()){setError("L'email du client est obligatoire");return}
         if(!form.chambreId){setError('Veuillez sélectionner une chambre');return}
+        if(Number(form.avance)>0 && !form.methodePaiement){setError('Veuillez choisir une mÃ©thode de paiement de l’avance');return}
         setProcessing(true)
         try { await onSubmit({...form, dateArrivee:formatInput(dateRange?.checkIn), dateDepart:formatInput(dateRange?.checkOut), montantTotal:form.montantTotal||montantAuto}) }
         catch (err) { setError(err.message || 'Erreur lors de la création') }
@@ -568,6 +569,7 @@ const ReservationModal = ({ isOpen, onClose, dateRange, chambres, onSubmit }) =>
                             <div><label className="block text-xs font-bold text-gray-500 mb-1.5">Source</label><select {...F('source')} className={ic}><option value="interne">Réservation directe</option><option value="booking">Booking.com</option><option value="airbnb">Airbnb</option><option value="agence">Agence</option><option value="site_web">Site web</option></select></div>
                             <div><label className="block text-xs font-bold text-gray-500 mb-1.5">Montant {montantAuto>0&&<span className="text-[#66CAD8]">Auto: {montantAuto}</span>}</label><input type="number" min="0" {...F('montantTotal')} placeholder={String(montantAuto||'0')} className={ic}/></div>
                             <div><label className="block text-xs font-bold text-gray-500 mb-1.5">Avance (MAD)</label><input type="number" min="0" {...F('avance')} placeholder="0" className={ic}/></div>
+                            {Number(form.avance)>0 && <div><label className="block text-xs font-bold text-gray-500 mb-1.5">MÃ©thode de paiement *</label><select {...F('methodePaiement')} className={ic}><option value="">Choisir...</option><option value="ESPECE">EspÃ¨ces</option><option value="CARTE">Carte</option><option value="CHEQUE">ChÃ¨que</option><option value="VIREMENT">Virement</option></select></div>}
                             <div className="col-span-2"><label className="block text-xs font-bold text-gray-500 mb-1.5">Notes</label><textarea rows={2} {...F('notes')} placeholder="Demandes spéciales..." className={ic}/></div>
                         </div>
                     </div>
@@ -928,7 +930,13 @@ export default function HebergementCalendrier() {
                 source: SOURCE_MAP[form.source] || 'DIRECT',
                 notes: form.notes || '',
             }
-            await bookingAxios.post('/booking/reservations/create', payload)
+            const response = await bookingAxios.post('/booking/reservations/create', payload)
+            const reservationId = response?.data?.data?.id
+            if (reservationId && Number(form.avance) > 0) {
+                await bookingAxios.post(`/booking/reservations/${reservationId}/paiement`, {
+                    montant: Number(form.avance), methode: form.methodePaiement
+                })
+            }
             setShowModal(false); setCheckIn(null); setCheckOut(null); setIsSelectingCheckOut(false); setSelectedRange(null)
             showNotif('success','Réservation créée avec succès !'); await fetchBase()
         } catch(err){ throw new Error(err.response?.data?.message||'Erreur lors de la création') }

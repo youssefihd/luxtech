@@ -732,12 +732,21 @@ export default function Register() {
     const next = () => { setErrors({}); setStep(s=>Math.min(s+1,TOTAL_STEPS)); window.scrollTo(0,0) }
     const back = () => { setErrors({}); setStep(s=>Math.max(s-1,1)); window.scrollTo(0,0) }
 
-    const sendCode = async () => {
-        setLoading(true); setErrors({})
+    const sendCode = async (advanceToVerification = false) => {
+        setLoading(true)
+        setErrors({})
         try {
-            await axios.post('/auth/send-verification-code', { email: data.email })
-        } catch (_) {}
-        finally { setLoading(false); next() }
+            const response = await axios.post('/auth/send-verification-code', { email: data.email })
+            if (response.data?.success !== true) {
+                throw new Error(response.data?.message || "L'envoi du code a échoué.")
+            }
+            setData(current => ({ ...current, verificationCode: '' }))
+            if (advanceToVerification) next()
+        } catch (error) {
+            setErrors({ email: error.response?.data?.message || error.message || "Impossible d'envoyer le code. Réessayez." })
+        } finally {
+            setLoading(false)
+        }
     }
 
     const verifyCode = async () => {
@@ -881,10 +890,10 @@ export default function Register() {
                     <StepBar current={step}/>
                     {step===1 && <Step1 data={data} setData={setData} onNext={next}/>}
                     {step===2 && data.role==='HEBERGEMENT_ADMIN' && <Step1b data={data} setData={setData} onNext={next} onBack={back}/>}
-                    {step===2 && data.role==='AGENCY_ADMIN' && <Step2 data={data} setData={setData} onNext={sendCode} onBack={back} loading={loading} error={errors.email}/>}
-                    {step===3 && data.role==='HEBERGEMENT_ADMIN' && <Step2 data={data} setData={setData} onNext={sendCode} onBack={back} loading={loading} error={errors.email}/>}
-                    {step===3 && data.role==='AGENCY_ADMIN' && <Step3 data={data} setData={setData} onNext={verifyCode} onBack={back} loading={loading} error={errors.code} onResend={sendCode}/>}
-                    {step===4 && data.role==='HEBERGEMENT_ADMIN' && <Step3 data={data} setData={setData} onNext={verifyCode} onBack={back} loading={loading} error={errors.code} onResend={sendCode}/>}
+                    {step===2 && data.role==='AGENCY_ADMIN' && <Step2 data={data} setData={setData} onNext={() => sendCode(true)} onBack={back} loading={loading} error={errors.email}/>}
+                    {step===3 && data.role==='HEBERGEMENT_ADMIN' && <Step2 data={data} setData={setData} onNext={() => sendCode(true)} onBack={back} loading={loading} error={errors.email}/>}
+                    {step===3 && data.role==='AGENCY_ADMIN' && <Step3 data={data} setData={setData} onNext={verifyCode} onBack={back} loading={loading} error={errors.code} onResend={() => sendCode(false)}/>}
+                    {step===4 && data.role==='HEBERGEMENT_ADMIN' && <Step3 data={data} setData={setData} onNext={verifyCode} onBack={back} loading={loading} error={errors.code} onResend={() => sendCode(false)}/>}
                     {step===4 && data.role==='AGENCY_ADMIN' && <Step4 data={data} setData={setData} onNext={next} onBack={back}/>}
                     {step===5 && data.role==='HEBERGEMENT_ADMIN' && <Step4 data={data} setData={setData} onNext={next} onBack={back}/>}
                     {step===5 && data.role==='AGENCY_ADMIN' && <Step5 data={data} setData={setData} onNext={next} onBack={back}/>}

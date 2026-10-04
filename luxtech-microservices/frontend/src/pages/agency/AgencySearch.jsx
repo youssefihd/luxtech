@@ -36,12 +36,19 @@ export default function AgencySearch() {
     const [submitting, setSubmitting] = useState(false)
     const [bookingError, setBookingError] = useState('')
     const [confirmation, setConfirmation] = useState(null)
+    const [agencyMargin, setAgencyMargin] = useState(0)
 
     useEffect(() => {
         if (!user?.agencyId) return
         agencyAxios.get(`/agence/${user.agencyId}/clients`)
             .then(response => setClients(response.data?.data || []))
             .catch(() => setClients([]))
+        agencyAxios.get('/agence/my')
+            .then(response => {
+                const taux = response.data?.data?.commissionTaux
+                if (taux != null) setAgencyMargin(Number(taux))
+            })
+            .catch(() => {})
     }, [user?.agencyId])
 
     const searchHotels = async event => {
@@ -219,7 +226,7 @@ export default function AgencySearch() {
                                             {result.rooms.map(room => (
                                                 <div key={room.chambreTypeId} className="flex flex-col gap-3 rounded-xl border border-gray-100 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
                                                     <div className="min-w-0"><p className="flex items-center gap-2 font-semibold text-gray-900"><BedDouble size={16} className="text-[#4B8794]" />{room.nom || 'Chambre'}</p><p className="mt-1 text-xs text-gray-500">{room.nbDisponibles} disponible{room.nbDisponibles !== 1 ? 's' : ''} · capacité {room.capaciteAdultes || '—'} adulte(s)</p></div>
-                                                    <div className="flex items-center justify-between gap-4 sm:justify-end"><p className="font-bold text-gray-900">{Number(room.prixBase) > 0 ? <>{money(room.prixBase)}<span className="font-normal text-gray-500"> / nuit</span></> : <span className="text-xs font-medium text-amber-700">Tarif indisponible</span>}</p><button type="button" disabled={Number(room.prixBase) <= 0} onClick={() => beginBooking(hotel, room)} className="rounded-lg bg-[#1D2252] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#30386f] disabled:cursor-not-allowed disabled:opacity-40">Réserver</button></div>
+                                                    <div className="flex items-center justify-between gap-4 sm:justify-end"><p className="font-bold text-gray-900">{Number(room.prixAvecMarkup || room.prixBase) > 0 ? <>{money((Number(room.prixAvecMarkup || room.prixBase)) * (1 + agencyMargin / 100))}<span className="font-normal text-gray-500"> / nuit</span></> : <span className="text-xs font-medium text-amber-700">Tarif indisponible</span>}</p><button type="button" disabled={Number(room.prixBase) <= 0} onClick={() => beginBooking(hotel, room)} className="rounded-lg bg-[#1D2252] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#30386f] disabled:cursor-not-allowed disabled:opacity-40">Réserver</button></div>
                                                 </div>
                                             ))}
                                         </div>
@@ -235,7 +242,7 @@ export default function AgencySearch() {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4" onMouseDown={event => { if (event.target === event.currentTarget) setBooking(null) }}>
                     <form onSubmit={submitBooking} className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
                         <div className="mb-5 flex items-start justify-between gap-4">
-                            <div><p className="text-xs font-semibold uppercase tracking-wider text-[#4B8794]">Demande de réservation</p><h2 className="mt-1 text-xl font-bold text-gray-900">{booking.hotel.nom}</h2><p className="mt-1 text-sm text-gray-500">{booking.room.nom} · {arrival} au {departure} · {money(Number(booking.room.prixBase) * nights)} estimés</p></div>
+                            <div><p className="text-xs font-semibold uppercase tracking-wider text-[#4B8794]">Demande de réservation</p><h2 className="mt-1 text-xl font-bold text-gray-900">{booking.hotel.nom}</h2><p className="mt-1 text-sm text-gray-500">{booking.room.nom} · {arrival} au {departure} · {money(Number(booking.room.prixAvecMarkup || booking.room.prixBase) * (1 + agencyMargin / 100) * nights)} estimés</p></div>
                             <button type="button" onClick={() => setBooking(null)} aria-label="Fermer" className="rounded-lg p-2 text-gray-500 hover:bg-gray-100"><X size={18} /></button>
                         </div>
                         {bookingError && <p role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-700">{bookingError}</p>}

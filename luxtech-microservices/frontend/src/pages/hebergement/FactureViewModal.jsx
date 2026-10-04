@@ -175,6 +175,10 @@ const FactureViewModal = ({ facture, reservation, onClose }) => {
                     {/* Paiement */}
                     <div className="rounded-2xl bg-gray-50 border border-gray-100 p-4 space-y-3">
                         <div className="flex justify-between items-center text-sm">
+                            <span className="text-gray-500 font-medium">Mode de paiement</span>
+                            <span className="font-bold text-gray-900">{{ ESPECE: 'Espèces', CARTE: 'Carte', CHEQUE: 'Chèque', VIREMENT: 'Virement' }[facture.methodePaiement] || 'Non renseigné'}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
                             <span className="text-gray-500 font-medium">Progression du paiement</span>
                             <span className="font-bold text-gray-900">{pct}%</span>
                         </div>

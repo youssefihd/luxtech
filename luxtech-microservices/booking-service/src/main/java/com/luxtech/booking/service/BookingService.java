@@ -1,6 +1,8 @@
 package com.luxtech.booking.service;
 
 import com.luxtech.booking.client.ActivityLogDto;
+import com.luxtech.booking.client.AgencyApiResponse;
+import com.luxtech.booking.client.AgencyClient;
 import com.luxtech.booking.client.ChambreApiResponse;
 import com.luxtech.booking.client.HebergementApiResponse;
 import com.luxtech.booking.client.HebergementClient;
@@ -43,6 +45,7 @@ public class BookingService {
     private final FacturePdfService     facturePdfService;
     private final HebergementClient     hebergementClient;
     private final PaymentClient         paymentClient;
+    private final AgencyClient              agencyClient;
 
     @Value("${spring.datasource.url}")
     private String datasourceUrl;
@@ -51,31 +54,79 @@ public class BookingService {
     // CREATION
     // ══════════════════════════════════════════════════════
 
-    public Reservation createReservation(BookingDto.CreateReservationRequest req, Long userId) {
+    public Reservation createReservation(
+            BookingDto.CreateReservationRequest req,
+            Long userId) {
+
         if (req.getChambreId() != null) {
-            List<Reservation> conflits = reservationRepository.findConflicts(
-                    req.getChambreId(), req.getDateArrivee(), req.getDateDepart());
+            List<Reservation> conflits =
+                    reservationRepository.findConflicts(
+                            req.getChambreId(),
+                            req.getDateArrivee(),
+                            req.getDateDepart()
+                    );
+
             if (!conflits.isEmpty()) {
-                throw new BookingException("Chambre déjà réservée sur cette période.", 409);
+                throw new BookingException(
+                        "Chambre déjà réservée sur cette période.",
+                        409
+                );
             }
         }
 
-        long nbNuits = req.getDateArrivee().until(req.getDateDepart()).getDays();
+        long nbNuits = req.getDateArrivee()
+                .until(req.getDateDepart())
+                .getDays();
+
         if (nbNuits <= 0) {
-            throw new BookingException("La date de départ doit être après la date d'arrivée.", 400);
+            throw new BookingException(
+                    "La date de départ doit être après la date d'arrivée.",
+                    400
+            );
         }
 
-        BigDecimal prixTotal = (req.getPrixTotal() != null && req.getPrixTotal().compareTo(BigDecimal.ZERO) > 0)
-                ? req.getPrixTotal() : BigDecimal.ZERO;
+        BigDecimal tauxCommission = fetchHotelCommissionTaux(req.getHotelId());
+        BigDecimal tauxMargeAgence = BigDecimal.ZERO;
+        if (req.getAgencyId() != null) {
+            tauxMargeAgence = fetchAgencyMarginTaux(req.getAgencyId());
+        }
 
-        BigDecimal prixNuit = prixTotal.compareTo(BigDecimal.ZERO) > 0
-                ? prixTotal.divide(BigDecimal.valueOf(nbNuits), 2, RoundingMode.HALF_UP)
-                : BigDecimal.ZERO;
+        BigDecimal prixTotal =
+                req.getPrixTotal() != null
+                        ? req.getPrixTotal()
+                        : BigDecimal.ZERO;
 
-        BigDecimal prixHt            = prixTotal.divide(new BigDecimal("1.20"), 2, RoundingMode.HALF_UP);
-        BigDecimal montantTva        = prixTotal.subtract(prixHt);
-        BigDecimal montantCommission = prixTotal.multiply(new BigDecimal("0.10")).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal montantReverse    = prixTotal.subtract(montantCommission);
+        BigDecimal prixNuit =
+                prixTotal.compareTo(BigDecimal.ZERO) > 0
+                        ? prixTotal.divide(
+                        BigDecimal.valueOf(nbNuits),
+                        2,
+                        RoundingMode.HALF_UP
+                )
+                        : BigDecimal.ZERO;
+
+        BigDecimal prixHt =
+                prixTotal.divide(
+                        new BigDecimal("1.20"),
+                        2,
+                        RoundingMode.HALF_UP
+                );
+
+        BigDecimal montantTva =
+                prixTotal.subtract(prixHt);
+
+        BigDecimal montantCommission =
+                prixTotal
+                        .multiply(tauxCommission)
+                        .divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
+
+        BigDecimal montantMargeAgence =
+                prixTotal
+                        .multiply(tauxMargeAgence)
+                        .divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
+
+        BigDecimal montantReverse =
+                prixTotal.subtract(montantCommission).subtract(montantMargeAgence);
 
         Reservation r = Reservation.builder()
                 .numeroReservation(generateNumero())
@@ -93,36 +144,49 @@ public class BookingService {
                 .dateArrivee(req.getDateArrivee())
                 .dateDepart(req.getDateDepart())
                 .nbNuits((int) nbNuits)
-                .nbAdultes(req.getNbAdultes() != null ? req.getNbAdultes() : 1)
-                .nbEnfants(req.getNbEnfants() != null ? req.getNbEnfants() : 0)
+                .nbAdultes(
+                        req.getNbAdultes() != null
+                                ? req.getNbAdultes()
+                                : 1
+                )
+                .nbEnfants(
+                        req.getNbEnfants() != null
+                                ? req.getNbEnfants()
+                                : 0
+                )
                 .prixChambreNuit(prixNuit)
                 .prixHt(prixHt)
                 .prixTotal(prixTotal)
                 .montantTva(montantTva)
+                .tauxCommission(tauxCommission)
                 .montantCommission(montantCommission)
+                .tauxMargeAgence(tauxMargeAgence)
+                .montantMargeAgence(montantMargeAgence)
                 .montantReverse(montantReverse)
                 .montantPaye(BigDecimal.ZERO)
                 .paymentStatus(Reservation.PaymentStatus.NON_PAYE)
-                .source(req.getSource() != null ? req.getSource() : Reservation.ReservationSource.DIRECT)
+                .source(
+                        req.getSource() != null
+                                ? req.getSource()
+                                : Reservation.ReservationSource.DIRECT
+                )
                 .notes(req.getNotes())
                 .status(Reservation.ReservationStatus.EN_ATTENTE)
                 .build();
 
-        Reservation saved = reservationRepository.save(r);
-        log.info("Réservation créée : {}", saved.getNumeroReservation());
+        log.info("Saving reservation...");
 
+        Reservation saved = reservationRepository.save(r);
         genererFacture(saved);
-        publishEvent("reservation.created", saved.getId());
-        notifierProprietaire(saved.getHotelId(), "RESERVATION", "Nouvelle réservation",
-                String.format("%s %s — %s au %s (%s)",
-                        saved.getClientNom(), saved.getClientPrenom() != null ? saved.getClientPrenom() : "",
-                        saved.getDateArrivee(), saved.getDateDepart(), saved.getNumeroReservation()));
-        logActivite(saved.getHotelId(), userId, "CREATE", "Reservation",
-                "Réservation créée : " + saved.getNumeroReservation());
+
+        log.info(
+                "Reservation successfully saved: id={}, numero={}",
+                saved.getId(),
+                saved.getNumeroReservation()
+        );
 
         return saved;
     }
-
     // ══════════════════════════════════════════════════════
     // LECTURE
     // ══════════════════════════════════════════════════════
@@ -313,6 +377,10 @@ public class BookingService {
     public Reservation enregistrerPaiement(Long id, BigDecimal montant, Facture.MethodePaiement methode) {
         Reservation r = getById(id);
 
+        if (methode == null) {
+            throw new BookingException("La methode de paiement est obligatoire.", 400);
+        }
+
         if (montant == null || montant.compareTo(BigDecimal.ZERO) <= 0) {
             throw new BookingException("Le montant doit être supérieur à 0.", 400);
         }
@@ -381,12 +449,16 @@ public class BookingService {
         if (r.getPrixChambreNuit() != null && r.getPrixChambreNuit().compareTo(BigDecimal.ZERO) > 0) {
             BigDecimal nouveauTotal  = r.getPrixChambreNuit().multiply(BigDecimal.valueOf(nbNuitsTotal));
             BigDecimal prixHt        = nouveauTotal.divide(new BigDecimal("1.20"), 2, RoundingMode.HALF_UP);
-            BigDecimal commission    = nouveauTotal.multiply(new BigDecimal("0.10")).setScale(2, RoundingMode.HALF_UP);
+            BigDecimal tauxComm      = r.getTauxCommission() != null ? r.getTauxCommission() : new BigDecimal("10.00");
+            BigDecimal commission    = nouveauTotal.multiply(tauxComm).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
+            BigDecimal tauxMarge     = r.getTauxMargeAgence() != null ? r.getTauxMargeAgence() : BigDecimal.ZERO;
+            BigDecimal marge         = nouveauTotal.multiply(tauxMarge).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
             r.setPrixTotal(nouveauTotal);
             r.setPrixHt(prixHt);
             r.setMontantTva(nouveauTotal.subtract(prixHt));
             r.setMontantCommission(commission);
-            r.setMontantReverse(nouveauTotal.subtract(commission));
+            r.setMontantMargeAgence(marge);
+            r.setMontantReverse(nouveauTotal.subtract(commission).subtract(marge));
         }
 
         r.setDateDepart(nouvelleDateDepart);
@@ -402,66 +474,51 @@ public class BookingService {
     // FACTURES
     // ══════════════════════════════════════════════════════
 
-    private void genererFacture(Reservation r) {
-        try {
-            String numero = "FAC-" + genererNumeroFacture(r.getHotelId());
-
-            Facture.TypeFacture typeFacture = r.getAgencyId() != null
-                    ? Facture.TypeFacture.AGENCE
-                    : Facture.TypeFacture.HOTEL;
-
-            Facture f = Facture.builder()
-                    .numeroFacture(numero)
-                    .reservationId(r.getId())
-                    .hotelId(r.getHotelId())
-                    .agenceId(r.getAgencyId())
-                    .montantTotal(r.getPrixTotal())
-                    .montantHt(r.getPrixHt())
-                    .montantTva(r.getMontantTva())
-                    .montantCommission(r.getMontantCommission())
-                    .typeFacture(typeFacture)
-                    .statut(Facture.StatutFacture.IMPAYEE)
-                    .dateFacture(LocalDate.now())
-                    .dateEcheance(LocalDate.now().plusDays(14))
-                    .build();
-
-            factureRepository.save(f);
-            log.info("Facture {} générée pour la réservation {}", numero, r.getNumeroReservation());
-        } catch (Exception e) {
-            log.warn("Erreur génération facture pour réservation {} : {}", r.getId(), e.getMessage());
-        }
+    private void genererFacture(Reservation reservation) {
+        String numero = "FAC-" + genererNumeroFacture(reservation.getHotelId());
+        Facture.TypeFacture type = reservation.getAgencyId() == null
+                ? Facture.TypeFacture.HOTEL : Facture.TypeFacture.AGENCE;
+        Facture facture = Facture.builder()
+                .numeroFacture(numero)
+                .reservationId(reservation.getId())
+                .hotelId(reservation.getHotelId())
+                .agenceId(reservation.getAgencyId())
+                .montantTotal(reservation.getPrixTotal())
+                .montantHt(reservation.getPrixHt())
+                .montantTva(reservation.getMontantTva())
+                .montantCommission(reservation.getMontantCommission())
+                .typeFacture(type)
+                .statut(Facture.StatutFacture.IMPAYEE)
+                .dateFacture(LocalDate.now())
+                .dateEcheance(LocalDate.now().plusDays(14))
+                .build();
+        factureRepository.save(facture);
+        log.info("Invoice {} generated for reservation {}", numero, reservation.getNumeroReservation());
     }
 
-    private void genererFactureService(ReservationService rs) {
-        try {
-            String numero = "FAC-" + genererNumeroFacture(rs.getHotelId());
-
-            BigDecimal prixTotal = rs.getPrixTotal();
-            BigDecimal prixHt = prixTotal.divide(new BigDecimal("1.20"), 2, RoundingMode.HALF_UP);
-            BigDecimal montantTva = prixTotal.subtract(prixHt);
-            BigDecimal montantCommission = prixTotal.multiply(new BigDecimal("0.10")).setScale(2, RoundingMode.HALF_UP);
-
-            Facture f = Facture.builder()
-                    .numeroFacture(numero)
-                    .reservationServiceId(rs.getId())
-                    .hotelId(rs.getHotelId())
-                    .montantTotal(prixTotal)
-                    .montantHt(prixHt)
-                    .montantTva(montantTva)
-                    .montantCommission(montantCommission)
-                    .typeFacture(Facture.TypeFacture.HOTEL)
-                    .statut(Facture.StatutFacture.IMPAYEE)
-                    .dateFacture(LocalDate.now())
-                    .dateEcheance(LocalDate.now().plusDays(14))
-                    .build();
-
-            factureRepository.save(f);
-            log.info("Facture {} générée pour le service {}", numero, rs.getServiceNom());
-        } catch (Exception e) {
-            log.warn("Erreur génération facture pour le service {} : {}", rs.getId(), e.getMessage());
-        }
+    private void genererFactureService(ReservationService service) {
+        String numero = "FAC-" + genererNumeroFacture(service.getHotelId());
+        BigDecimal total = service.getPrixTotal();
+        BigDecimal ht = total.divide(new BigDecimal("1.20"), 2, RoundingMode.HALF_UP);
+        BigDecimal tva = total.subtract(ht);
+        BigDecimal tauxComm = fetchHotelCommissionTaux(service.getHotelId());
+        BigDecimal commission = total.multiply(tauxComm).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
+        Facture facture = Facture.builder()
+                .numeroFacture(numero)
+                .reservationServiceId(service.getId())
+                .hotelId(service.getHotelId())
+                .montantTotal(total)
+                .montantHt(ht)
+                .montantTva(tva)
+                .montantCommission(commission)
+                .typeFacture(Facture.TypeFacture.HOTEL)
+                .statut(Facture.StatutFacture.IMPAYEE)
+                .dateFacture(LocalDate.now())
+                .dateEcheance(LocalDate.now().plusDays(14))
+                .build();
+        factureRepository.save(facture);
+        log.info("Invoice {} generated for service {}", numero, service.getServiceNom());
     }
-
     private String genererNumeroFacture(Long hotelId) {
         String jdbcUrl = datasourceUrl != null ? datasourceUrl.toLowerCase(Locale.ROOT) : "";
         if (jdbcUrl.startsWith("jdbc:postgresql:")) {
@@ -473,7 +530,7 @@ public class BookingService {
         }
         FactureCounter counter = factureCounterRepository.findByHotelIdForUpdate(hotelId)
                 .orElseThrow(() -> new BookingException("Erreur génération numéro de facture.", 500));
-        counter.setDernierNumero(counter.getDernierNumero() + 1);
+        counter.setDernierNumero((counter.getDernierNumero() == null ? 0L : counter.getDernierNumero()) + 1);
         factureCounterRepository.save(counter);
         return String.format("%07d", counter.getDernierNumero());
     }
@@ -498,6 +555,39 @@ public class BookingService {
                 .orElseThrow(() -> new BookingException("Facture introuvable.", 404));
         f.setStatut(statut);
         return factureRepository.save(f);
+    }
+
+    public Facture enregistrerPaiementFacture(Long factureId, Facture.MethodePaiement methode) {
+        if (methode == null) throw new BookingException("La methode de paiement est obligatoire.", 400);
+        Facture facture = getFactureById(factureId);
+        if (facture.getStatut() == Facture.StatutFacture.ANNULEE) {
+            throw new BookingException("Une facture annulee ne peut pas etre payee.", 409);
+        }
+
+        if (facture.getReservationId() != null) {
+            Reservation reservation = getById(facture.getReservationId());
+            BigDecimal remaining = reservation.getPrixTotal().subtract(
+                    reservation.getMontantPaye() != null ? reservation.getMontantPaye() : BigDecimal.ZERO);
+            if (remaining.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new BookingException("Cette facture est deja reglee.", 409);
+            }
+            enregistrerPaiement(reservation.getId(), remaining, methode);
+            return getFactureById(factureId);
+        }
+
+        if (facture.getReservationServiceId() != null) {
+            ReservationService service = getReservationServiceById(facture.getReservationServiceId());
+            BigDecimal remaining = service.getPrixTotal().subtract(
+                    service.getMontantPaye() != null ? service.getMontantPaye() : BigDecimal.ZERO);
+            if (remaining.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new BookingException("Cette facture est deja reglee.", 409);
+            }
+            enregistrerPaiementService(service.getId(), remaining,
+                    ReservationService.MethodePaiementService.valueOf(methode.name()));
+            return getFactureById(factureId);
+        }
+
+        throw new BookingException("Cette facture n'est liee a aucune reservation payable.", 409);
     }
 
     @Transactional(readOnly = true)
@@ -631,6 +721,10 @@ public class BookingService {
     public ReservationService enregistrerPaiementService(Long id, BigDecimal montant, ReservationService.MethodePaiementService methode) {
         ReservationService rs = getReservationServiceById(id);
 
+        if (methode == null) {
+            throw new BookingException("La methode de paiement est obligatoire.", 400);
+        }
+
         if (montant == null || montant.compareTo(BigDecimal.ZERO) <= 0) {
             throw new BookingException("Le montant doit être supérieur à 0.", 400);
         }
@@ -653,6 +747,13 @@ public class BookingService {
         }
 
         ReservationService saved = reservationServiceRepository.save(rs);
+
+        factureRepository.findByReservationServiceId(id).forEach(facture -> {
+            facture.setStatut(saved.getStatutPaiement() == ReservationService.StatutPaiementService.PAYE
+                    ? Facture.StatutFacture.PAYEE : Facture.StatutFacture.PARTIELLEMENT_PAYEE);
+            facture.setMethodePaiement(methode == null ? null : Facture.MethodePaiement.valueOf(methode.name()));
+            factureRepository.save(facture);
+        });
 
         syncPaiementVersPaymentService(saved.getHotelId(), null, saved.getId(),
                 saved.getClientNom(), montant, methode != null ? methode.name() : null);
@@ -754,6 +855,8 @@ public class BookingService {
             return List.of();
         }
 
+        BigDecimal tauxMarkup = fetchHotelCommissionTaux(hotelId);
+
         Map<Long, List<ChambreApiResponse.ChambreData>> parType = chambresResp.getData().stream()
                 .filter(c -> !"HORS_SERVICE".equals(c.getStatus()))
                 .collect(Collectors.groupingBy(ChambreApiResponse.ChambreData::getChambreTypeId));
@@ -766,12 +869,17 @@ public class BookingService {
                     .count();
             if (nbLibres > 0) {
                 ChambreApiResponse.ChambreData premier = chambresDuType.get(0);
-                BigDecimal prix = premier.getPrixNuitee() != null ? premier.getPrixNuitee() : premier.getPrixBase();
+                BigDecimal prixBase = premier.getPrixNuitee() != null ? premier.getPrixNuitee() : premier.getPrixBase();
+                BigDecimal prixAvecMarkup = prixBase.add(
+                        prixBase.multiply(tauxMarkup).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP)
+                );
                 result.add(BookingDto.DisponibiliteTypeResponse.builder()
                         .chambreTypeId(entry.getKey())
                         .nom(premier.getChambreTypeNom())
                         .description(premier.getChambreTypeDescription())
-                        .prixBase(prix)
+                        .prixBase(prixBase)
+                        .tauxMarkup(tauxMarkup)
+                        .prixAvecMarkup(prixAvecMarkup)
                         .nbDisponibles((int) nbLibres)
                         .capaciteAdultes(premier.getCapaciteAdultes())
                         .capaciteEnfants(premier.getCapaciteEnfants())
@@ -801,11 +909,16 @@ public class BookingService {
                 .orElseThrow(() -> new BookingException("Plus aucune chambre disponible pour ce type sur ces dates.", 409));
 
         long nbNuits = req.getDateArrivee().until(req.getDateDepart()).getDays();
-        BigDecimal prixNuit = chambreLibre.getPrixNuitee() != null ? chambreLibre.getPrixNuitee() : chambreLibre.getPrixBase();
-        if (prixNuit == null || prixNuit.compareTo(BigDecimal.ZERO) <= 0) {
+        BigDecimal prixNuitBase = chambreLibre.getPrixNuitee() != null ? chambreLibre.getPrixNuitee() : chambreLibre.getPrixBase();
+        if (prixNuitBase == null || prixNuitBase.compareTo(BigDecimal.ZERO) <= 0) {
             throw new BookingException("Aucun tarif valide n'est configuré pour cette chambre.", 409);
         }
-        BigDecimal prixTotal = prixNuit.multiply(BigDecimal.valueOf(nbNuits));
+
+        BigDecimal tauxMarkup = fetchHotelCommissionTaux(req.getHotelId());
+        BigDecimal markupParNuit = prixNuitBase.multiply(tauxMarkup)
+                .divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
+        BigDecimal prixNuitClient = prixNuitBase.add(markupParNuit);
+        BigDecimal prixTotal = prixNuitClient.multiply(BigDecimal.valueOf(nbNuits));
 
         BookingDto.CreateReservationRequest createReq = BookingDto.CreateReservationRequest.builder()
                 .hotelId(req.getHotelId())
@@ -855,11 +968,20 @@ public class BookingService {
                 .orElseThrow(() -> new BookingException("Plus aucune chambre disponible pour ce type sur ces dates.", 409));
 
         long nbNuits = req.getDateArrivee().until(req.getDateDepart()).getDays();
-        BigDecimal prixNuit = chambreLibre.getPrixNuitee() != null ? chambreLibre.getPrixNuitee() : chambreLibre.getPrixBase();
-        if (prixNuit == null || prixNuit.compareTo(BigDecimal.ZERO) <= 0) {
+        BigDecimal prixNuitBase = chambreLibre.getPrixNuitee() != null ? chambreLibre.getPrixNuitee() : chambreLibre.getPrixBase();
+        if (prixNuitBase == null || prixNuitBase.compareTo(BigDecimal.ZERO) <= 0) {
             throw new BookingException("Aucun tarif valide n'est configuré pour cette chambre.", 409);
         }
-        BigDecimal prixTotal = prixNuit.multiply(BigDecimal.valueOf(nbNuits));
+
+        BigDecimal tauxMarkup = fetchHotelCommissionTaux(req.getHotelId());
+        BigDecimal tauxMargeAgence = fetchAgencyMarginTaux(agencyId);
+        BigDecimal markupParNuit = prixNuitBase.multiply(tauxMarkup)
+                .divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
+        BigDecimal margeParNuit = prixNuitBase.multiply(tauxMargeAgence)
+                .divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
+        BigDecimal prixNuitClient = prixNuitBase.add(markupParNuit).add(margeParNuit);
+        BigDecimal prixTotal = prixNuitClient.multiply(BigDecimal.valueOf(nbNuits));
+
         BookingDto.CreateReservationRequest createReq = BookingDto.CreateReservationRequest.builder()
                 .hotelId(req.getHotelId()).chambreId(chambreLibre.getId())
                 .chambreTypeId(req.getChambreTypeId()).agencyId(agencyId)
@@ -898,7 +1020,10 @@ public class BookingService {
                 .prixHt(r.getPrixHt())
                 .prixTotal(r.getPrixTotal())
                 .montantTva(r.getMontantTva())
+                .tauxCommission(r.getTauxCommission())
                 .montantCommission(r.getMontantCommission())
+                .tauxMargeAgence(r.getTauxMargeAgence())
+                .montantMargeAgence(r.getMontantMargeAgence())
                 .montantReverse(r.getMontantReverse())
                 .montantPaye(r.getMontantPaye() != null ? r.getMontantPaye() : BigDecimal.ZERO)
                 .status(r.getStatus())
@@ -956,6 +1081,32 @@ public class BookingService {
     // ══════════════════════════════════════════════════════
     // UTILITAIRES
     // ══════════════════════════════════════════════════════
+
+    private BigDecimal fetchHotelCommissionTaux(Long hotelId) {
+        try {
+            HebergementApiResponse resp = hebergementClient.getById(hotelId);
+            if (resp != null && resp.isSuccess() && resp.getData() != null
+                    && resp.getData().getCommissionTaux() != null) {
+                return resp.getData().getCommissionTaux();
+            }
+        } catch (Exception e) {
+            log.warn("Impossible de récupérer le taux de commission de l'hôtel {} : {}", hotelId, e.getMessage());
+        }
+        return new BigDecimal("10.00");
+    }
+
+    private BigDecimal fetchAgencyMarginTaux(Long agencyId) {
+        try {
+            AgencyApiResponse resp = agencyClient.getById(agencyId);
+            if (resp != null && resp.isSuccess() && resp.getData() != null
+                    && resp.getData().getCommissionTaux() != null) {
+                return resp.getData().getCommissionTaux();
+            }
+        } catch (Exception e) {
+            log.warn("Impossible de récupérer le taux de marge de l'agence {} : {}", agencyId, e.getMessage());
+        }
+        return BigDecimal.ZERO;
+    }
 
     private String generateNumero() {
         String date   = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
@@ -1059,3 +1210,4 @@ public class BookingService {
     }
 
 }
+

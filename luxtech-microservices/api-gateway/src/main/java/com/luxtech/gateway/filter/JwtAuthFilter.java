@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
@@ -31,6 +32,24 @@ public class JwtAuthFilter extends
     @Override
     public GatewayFilter apply(Config config) {
         return (exchange, chain) -> {
+
+            String requestPath = exchange.getRequest().getPath().value();
+            boolean publicHotelPage = HttpMethod.GET.equals(exchange.getRequest().getMethod())
+                    && ("/api/hebergement/public".equals(requestPath)
+                    || requestPath.startsWith("/api/hebergement/public/"));
+            if (publicHotelPage) {
+                ServerWebExchange anonymousExchange = exchange.mutate()
+                        .request(request -> request.headers(headers -> {
+                            headers.remove("X-User-Id");
+                            headers.remove("X-User-Role");
+                            headers.remove("X-User-Email");
+                            headers.remove("X-User-Nom");
+                            headers.remove("X-Agency-Id");
+                            headers.remove("X-Hotel-Id");
+                        }))
+                        .build();
+                return chain.filter(anonymousExchange);
+            }
 
             String authHeader = exchange.getRequest()
                     .getHeaders()

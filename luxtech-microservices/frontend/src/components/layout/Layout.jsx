@@ -160,11 +160,11 @@ export default function Layout() {
 
     const agenceNav = (
         <>
-            <NavSeparator label="Vue generale" />
-            <NavLink to="/agence" label="Dashboard" icon={LayoutDashboard} />
-            <NavSeparator label="Reservations" />
+            <NavSeparator label="Vue générale" />
+            <NavLink to="/agence" label="Tableau de bord" icon={LayoutDashboard} />
+            <NavSeparator label="Réservations" />
             <NavLink to="/agence/recherche"      label="Rechercher des chambres" icon={Compass} />
-            <NavLink to="/agence/reservations"   label="Mes reservations"        icon={Calendar} />
+            <NavLink to="/agence/reservations"   label="Mes réservations"        icon={Calendar} />
             <NavLink to="/agence/clients"        label="Clients"                 icon={Users} />
             <NavSeparator label="Finance" />
             <NavLink to="/agence/factures"       label="Factures"     icon={FileText} />
@@ -180,11 +180,11 @@ export default function Layout() {
     )
 
     const nav = isRole('CLIENT') ? adminNav
-        : isRole('HEBERGEMENT_ADMIN', 'HEBERGEMENT_STAFF') ? hotelNav
+        : isRole('HEBERGEMENT_ADMIN', 'HEBERGEMENT_STAFF','CLIENT') ? hotelNav
             : agenceNav
 
     const title = isRole('CLIENT') ? 'Administration'
-        : isRole('HEBERGEMENT_ADMIN', 'HEBERGEMENT_STAFF') ? 'Gestion Hebergement'
+        : isRole('HEBERGEMENT_ADMIN', 'HEBERGEMENT_STAFF','CLIENT') ? 'Gestion Hebergement'
             : 'Espace Agence'
 
     return (
